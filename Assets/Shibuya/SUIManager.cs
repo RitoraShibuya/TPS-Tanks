@@ -3,7 +3,11 @@ using UnityEngine;
 public class SUIManager : MonoBehaviour
 {
     public static SUIManager SInstance { get; private set; }
-    [SerializeField] private Transform SUIParent;
+
+    [SerializeField] private GameObject SFadePrefab;
+
+    private Transform SCanvasTran;
+    private GameObject SCurrentFadeInstance;
 
     private void Awake()
     {
@@ -11,6 +15,12 @@ public class SUIManager : MonoBehaviour
         {
             SInstance = this;
             DontDestroyOnLoad(gameObject);
+
+            Canvas childCanvas = GetComponentInChildren<Canvas>();
+            if (childCanvas != null)
+            {
+                SCanvasTran = childCanvas.transform;
+            }
         }
         else
         {
@@ -34,17 +44,67 @@ public class SUIManager : MonoBehaviour
     {
         if (ui_prefub == null) return null;
 
-        GameObject spawnedUI = Instantiate(ui_prefub, SUIParent);
+        GameObject spawn_ui = Instantiate(ui_prefub, SCanvasTran);
 
-        RectTransform rect = spawnedUI.GetComponent<RectTransform>();
+        RectTransform rect = spawn_ui.GetComponent<RectTransform>();
 
-        return spawnedUI;
+        return spawn_ui;
     }
-    public void SHideUI(GameObject uiObject)
+
+    public void SHideUI(GameObject ui_object)
     {
-        if (uiObject != null)
+        if (ui_object != null)
         {
-            Destroy(uiObject);
+            Destroy(ui_object);
+        }
+    }
+
+    public void SPlayFadeIn()
+    {
+        if (SFadePrefab != null && SCanvasTran != null)
+        {
+            if (this.SCurrentFadeInstance == null)
+            {
+                this.SCurrentFadeInstance = Instantiate(SFadePrefab, SCanvasTran);
+            }
+
+            SCurrentFadeInstance.transform.SetAsLastSibling();
+
+            Animator animator = SCurrentFadeInstance.GetComponent<Animator>();
+            if (animator != null)
+            {
+                animator.Play("FadeIn");
+            }
+
+
+            Destroy(SCurrentFadeInstance, 1.5f);
+        }
+        else
+        {
+            Debug.LogError("プレハブまたはCanvasTransformが設定されていません！");
+        }
+    }
+
+    public void SPlayFadeOut()
+    {
+        if (SFadePrefab != null && SCanvasTran != null)
+        {
+            if (SCurrentFadeInstance == null)
+            {
+                SCurrentFadeInstance = Instantiate(SFadePrefab, SCanvasTran);
+            }
+
+            SCurrentFadeInstance.transform.SetAsLastSibling();
+
+            Animator animator = SCurrentFadeInstance.GetComponent<Animator>();
+            if (animator != null)
+            {
+                animator.Play("FadeOut");
+            }
+        }
+        else
+        {
+            Debug.LogError("プレハブまたはCanvasTransformが設定されていません！");
         }
     }
 }
