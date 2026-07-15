@@ -1,13 +1,16 @@
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.EventSystems; 
+using UnityEngine.SceneManagement;
 
 public class STitleGameManager : SGameManagerBase
 {
     bool SIsTutorialCleared = false;
+
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
-        SUIManager.SInstance.SPlayFadeIn();
+        SUIManager.SInstance.SPlayFadeIn(0.4f);
     }
 
     // Update is called once per frame
@@ -20,7 +23,8 @@ public class STitleGameManager : SGameManagerBase
     {
         if (!SIsTutorialCleared)
         {
-            LoadSceneWithDelay("TutorialScene");
+            LoadSceneWithDelay("TutorialScene",1.0f);
+            SUIManager.SInstance.SPlayWipeOut(1.0f);
         }
         else
         {

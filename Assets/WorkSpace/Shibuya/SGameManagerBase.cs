@@ -7,7 +7,7 @@ public class SGameManagerBase : MonoBehaviour
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
-        SUIManager.SInstance.SPlayFadeIn();
+        
     }
 
     // Update is called once per frame
@@ -16,15 +16,14 @@ public class SGameManagerBase : MonoBehaviour
 
     }
 
-    public void LoadSceneWithDelay(string sceneName)
+    public void LoadSceneWithDelay(string sceneName,float duration = 1.0f)
     {
-        StartCoroutine(LoadSceneCoroutine(sceneName));
-        SUIManager.SInstance.SPlayFadeOut();
+        StartCoroutine(LoadSceneCoroutine(sceneName,duration));
     }
 
-    private IEnumerator LoadSceneCoroutine(string sceneName)
+    private IEnumerator LoadSceneCoroutine(string sceneName,float duration)
     {
-        yield return new WaitForSeconds(1.5f);
+        yield return new WaitForSeconds(duration);
         SceneManager.LoadScene(sceneName);
     }
 }
