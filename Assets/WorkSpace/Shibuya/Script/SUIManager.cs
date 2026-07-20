@@ -6,7 +6,6 @@ public class SUIManager : MonoBehaviour
 {
     public static SUIManager SInstance { get; private set; }
 
-    [Header("Transition Prefabs")]
     [SerializeField] private GameObject SFadePrefab;
     [SerializeField] private GameObject SWipePrefab;
 
@@ -38,7 +37,7 @@ public class SUIManager : MonoBehaviour
     }
 
     // ==========================================
-    // イベントシステムの重複防止処理（復活版）
+    // イベントシステムの重複防止処理
     // ==========================================
     private void OnEnable()
     {

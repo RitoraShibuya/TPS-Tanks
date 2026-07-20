@@ -5,8 +5,6 @@ using UnityEngine.SceneManagement;
 
 public class STitleGameManager : SGameManagerBase
 {
-    bool SIsTutorialCleared = false;
-
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
@@ -21,14 +19,14 @@ public class STitleGameManager : SGameManagerBase
 
     public void OnSceneButtonClick()
     {
-        if (!SIsTutorialCleared)
+        if (!SProgressManager.SInstance.IsStageCleared(0))
         {
             LoadSceneWithDelay("TutorialScene",1.0f);
-            SUIManager.SInstance.SPlayWipeOut(1.0f);
         }
         else
         {
-            
+            LoadSceneWithDelay("Stage1Scene", 1.0f);
         }
+        SUIManager.SInstance.SPlayWipeOut(1.0f);
     }
 }
