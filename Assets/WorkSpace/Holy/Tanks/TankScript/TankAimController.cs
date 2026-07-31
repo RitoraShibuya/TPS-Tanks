@@ -2,57 +2,49 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 
 /// <summary>
-/// タンクのHead(カメラ搭載部分)の位置追従・回転を担当するスクリプト。
-/// Input Systemを使用し、マウスとゲームパッド右スティックの両方でカメラ(Head)を回転操作できる。
+/// タンクのHead(カメラ搭載部分の土台)のヨー(左右)回転を担当するスクリプト。
+/// Input Systemを使用し、マウスとゲームパッド右スティックの両方でヨー回転を操作できる。
 ///
 /// 役割分担:
 /// - TankBody: 移動と車体(Body)自体の回転のみを行う。
-/// - このスクリプト(TankHead): Bodyの位置には追従するが、Bodyの回転には一切追従しない。
-///   カメラの向き(Head自身の回転)は、マウス/右スティックの入力のみで独立して制御する。
+/// - このスクリプト(TankHead): ヨー(左右)の回転のみを、マウス/右スティックの入力で
+///   独立して制御する。
+/// - UDRotater: ピッチ(上下)の回転を担当する。Headの子オブジェクトとして配置し、
+///   ローカルX軸回転のみを行う。詳細は UDRotater.cs を参照。
 ///
-/// 動作仕様:
-/// - 位置: 毎フレーム、Bodyの位置 + オフセット に追従する。
-/// - 回転: マウスの移動量、またはゲームパッドの右スティック入力によって
-///   ヨー(左右)・ピッチ(上下)を独立して回転させる。Bodyの回転には一切影響されない。
+/// 階層構成(Bodyの子のままでよい):
+///   Body (TankBody)
+///    └ Head (TankHead)  ※Bodyの子のままでOK
+///        └ UDRotater
+///            └ Camera
+///
+/// 動作仕様(重要):
+/// - HeadはBodyの子のままでよい。位置はBodyの子であることで自動的に追従する。
+/// - 回転は「ワールド回転を直接指定する」方式で管理する。
+///   ・毎フレーム、プレイヤーの入力(マウス/右スティック)によるヨー角度を蓄積する。
+///   ・その蓄積したヨー角度を transform.rotation (ワールド回転) に直接設定する。
+///   ・親であるBodyが物理演算(Rigidbody)によって回転していても、
+///     ワールド回転を直接指定しているため、Bodyの回転量やタイミング
+///     (Rigidbodyの補間の有無など)に一切影響されない。
+///   ・以前試した「Bodyの回転量を毎フレーム逆算して引く」方式は、
+///     Rigidbodyの補間(Interpolation)による滑らかな見た目と、
+///     FixedUpdateタイミングでしか更新されない回転量計算がズレてしまい、
+///     見た目が跳ねる原因になっていたため、この方式に変更した。
 ///
 /// セットアップ:
-/// 1. Headは、Bodyの子オブジェクトにしない(子にすると回転も自動で追従してしまうため)。
-///    独立したGameObjectとして配置すること。
-/// 2. カメラ(Camera)はHeadの子として配置する。
-/// 3. このスクリプトをHeadのGameObjectにアタッチし、Inspector上の「Body Transform」に
-///    Body(車体)のTransformをドラッグ&ドロップで登録する。
+/// 1. Headは、届いたモデルの構造通り、Bodyの子のままでよい(切り離す必要はない)。
+/// 2. Headの子として「UDRotater」用のGameObjectを配置し、UDRotater.csをアタッチする。
+/// 3. カメラ(Camera)はさらにUDRotaterの子として配置する。
+/// 4. このスクリプトをHeadのGameObjectにアタッチするだけでよい(Body側の参照は不要)。
 /// </summary>
 public class TankHead : MonoBehaviour
 {
-    [Header("追従設定")]
-    [Tooltip("位置追従の対象となるBody(車体)のTransform")]
-    [SerializeField]
-    private Transform bodyTransform;
-
-    [Tooltip("Bodyの位置からHeadをどれだけずらして配置するか(例: 車体からの高さ)")]
-    [SerializeField]
-    private Vector3 positionOffset = new Vector3(0f, 2f, 0f);
-
-    [Header("回転設定(共通)")]
-    [Tooltip("上下(ピッチ)の可動範囲の下限(度)。真下方向に近いほど小さい値。")]
-    [SerializeField]
-    private float pitchMin = -60f;
-
-    [Tooltip("上下(ピッチ)の可動範囲の上限(度)。真上方向に近いほど大きい値。")]
-    [SerializeField]
-    private float pitchMax = 60f;
-
-    [Tooltip("チェックすると上下方向の入力を反転する")]
-    [SerializeField]
-    private bool invertPitch = false;
-
-    [Header("マウス設定")]
-    [Tooltip("マウスでの回転感度")]
+    [Header("ヨー回転設定")]
+    [Tooltip("マウスでのヨー回転感度")]
     [SerializeField]
     private float mouseSensitivity = 0.2f;
 
-    [Header("ゲームパッド設定")]
-    [Tooltip("右スティックでの回転感度(度/秒)")]
+    [Tooltip("右スティックでのヨー回転感度(度/秒)")]
     [SerializeField]
     private float gamepadSensitivity = 180f;
 
@@ -60,18 +52,22 @@ public class TankHead : MonoBehaviour
     [SerializeField]
     private float stickDeadzone = 0.1f;
 
+    [Header("不感帯設定(斜め入力時の軸スナップ)")]
+    [Tooltip("スティックの左右(X)成分がこの値以内の場合、左右入力を無視して上下(ピッチ)のみの動作にする。" +
+             "仕様書の既定は「ナシ」(0)。まずは0で試し、必要になった場合のみ値を入れる。")]
+    [SerializeField]
+    private float horizontalDeadzoneBand = 0f;
+
     private InputAction mouseLookAction;
     private InputAction stickLookAction;
 
-    private float yaw;
-    private float pitch;
+    // ワールド基準のヨー角度(Bodyの回転とは無関係に、プレイヤー操作のみで変化する)
+    private float worldYaw;
 
     private void Awake()
     {
-        // 初期回転をyaw/pitchに反映しておく(Headに最初から向きが付いている場合のズレ防止)
-        Vector3 startEuler = transform.eulerAngles;
-        yaw = startEuler.y;
-        pitch = NormalizePitch(startEuler.x);
+        // 初期回転をworldYawに反映しておく(Headに最初から向きが付いている場合のズレ防止)
+        worldYaw = transform.eulerAngles.y;
 
         // マウス移動量(デルタ)取得用アクション
         mouseLookAction = new InputAction(
@@ -114,43 +110,24 @@ public class TankHead : MonoBehaviour
             stickInput = Vector2.zero;
         }
 
-        float pitchSign = invertPitch ? 1f : -1f;
+        // 不感帯(軸スナップ): 左右(X)成分が「左右幅」以内なら、
+        // 斜め入力とみなさず上下(ピッチ)のみの動作にする(左右を無視する)
+        if (Mathf.Abs(stickInput.x) <= horizontalDeadzoneBand)
+        {
+            stickInput.x = 0f;
+        }
 
-        // ヨー(左右)の加算
-        yaw += mouseDelta.x * mouseSensitivity;
-        yaw += stickInput.x * gamepadSensitivity * Time.deltaTime;
-
-        // ピッチ(上下)の加算
-        pitch += mouseDelta.y * mouseSensitivity * pitchSign;
-        pitch += stickInput.y * gamepadSensitivity * Time.deltaTime * pitchSign;
-
-        // ピッチのみ可動範囲を制限(ヨーは360度自由に回転可能)
-        pitch = Mathf.Clamp(pitch, pitchMin, pitchMax);
-
-        // Bodyの回転には一切影響されず、独立してHeadの回転を適用
-        transform.rotation = Quaternion.Euler(pitch, yaw, 0f);
+        // プレイヤー操作分だけをworldYawに加算する(Bodyの回転は一切関与しない)
+        worldYaw += mouseDelta.x * mouseSensitivity;
+        worldYaw += stickInput.x * gamepadSensitivity * Time.deltaTime;
     }
 
     private void LateUpdate()
     {
-        if (bodyTransform == null)
-        {
-            return;
-        }
-
-        // 位置だけをBodyに追従させる(回転はUpdate側で独立管理しているため触らない)
-        transform.position = bodyTransform.position + positionOffset;
-    }
-
-    /// <summary>
-    /// eulerAngles.x は 0〜360度で返ってくるため、-180〜180度の範囲に変換する。
-    /// </summary>
-    private float NormalizePitch(float angle)
-    {
-        if (angle > 180f)
-        {
-            angle -= 360f;
-        }
-        return angle;
+        // ワールド回転を直接指定する。Bodyの子であっても、
+        // transform.rotation(ワールド)を直接設定すればBodyの回転の影響を受けない。
+        // LateUpdateで行うことで、Bodyの物理演算(補間含む)が全て確定した後に
+        // 上書きすることになり、タイミングのズレによる「跳ね」を防げる。
+        transform.rotation = Quaternion.Euler(0f, worldYaw, 0f);
     }
 }

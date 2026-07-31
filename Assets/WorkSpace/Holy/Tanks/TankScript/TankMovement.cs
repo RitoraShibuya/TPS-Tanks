@@ -7,7 +7,8 @@ using UnityEngine.InputSystem;
 ///
 /// 役割分担:
 /// - このスクリプト(TankBody): 移動と車体(Body)自体の回転のみを行う。カメラには関与しない。
-/// - TankHead: Headの位置をBodyに追従させつつ、カメラ・Head自身の回転(マウス/右スティック)を担当する。
+/// - TankHead: Bodyの子のまま配置し、ヨー(左右)回転を担当する。ワールド回転を直接指定する
+///   ことでBodyの回転(Rigidbodyの補間タイミングも含む)に一切影響されない。
 ///   詳細は TankHead.cs を参照。
 ///
 /// 動作仕様:
@@ -66,9 +67,24 @@ public class TankBody : MonoBehaviour
     // 最後に入力された方向を保持(入力が無い間は向きを維持するため)
     private Vector3 targetDirection;
 
+    /// <summary>
+    /// 移動方向の基準にするカメラ(Head)のTransformを外部から設定する。
+    /// モデルの階層構成が実行時に組み替わる場合(TankRigSetupなど)に使用する。
+    /// </summary>
+    public void SetCameraTransform(Transform camera)
+    {
+        cameraTransform = camera;
+    }
+
     private void Awake()
     {
         rb = GetComponent<Rigidbody>();
+
+        // MovePosition/MoveRotationはFixedUpdateのタイミングでしか座標を更新しないため、
+        // 補間(Interpolate)を有効にしないと描画フレームレートとのズレでカクつき(跳ね)が発生する。
+        // Bodyの子であるHeadなどもこの影響を受けるため、ここで自動設定しておく。
+        rb.interpolation = RigidbodyInterpolation.Interpolate;
+
         targetDirection = transform.forward;
 
         // Move用のInputActionをコード上で定義
