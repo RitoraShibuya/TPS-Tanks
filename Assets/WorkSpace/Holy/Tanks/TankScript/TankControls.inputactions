@@ -37,7 +37,7 @@
                     "name": "Fire",
                     "type": "Button",
                     "id": "e5a68bd7-a84b-43cd-a4ae-e19610265ad7",
-                    "expectedControlType": "Button",
+                    "expectedControlType": "",
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
@@ -167,6 +167,17 @@
                     "name": "",
                     "id": "887d3e3f-1389-465f-955c-1afe52a3ede8",
                     "path": "<Gamepad>/start",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Pouse",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "81466de0-e622-488e-b918-c1f67ca2fea3",
+                    "path": "<Keyboard>/escape",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
