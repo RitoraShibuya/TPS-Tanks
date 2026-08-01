@@ -1,19 +1,23 @@
+using System;
 using UnityEngine;
-using UnityEngine.EventSystems;
-using UnityEngine.SceneManagement;
 
 public class SUIManager : MonoBehaviour
 {
     public static SUIManager SInstance { get; private set; }
 
+    [Header("Transition UI Prefabs")]
     [SerializeField] private GameObject SFadePrefab;
     [SerializeField] private GameObject SWipePrefab;
 
-    private Transform SCanvasTran;
-    private EventSystem SMyEventSystem;
+    [Header("Pause UI Prefab")]
+    [SerializeField] private GameObject SPauseUIPrefab;
 
     private GameObject SCurrentFadeInstance;
     private GameObject SCurrentWipeInstance;
+    private GameObject SCurrentPauseInstance;
+
+    public event Action OnPauseEvent;
+    public event Action OnResumeEvent;
 
     private void Awake()
     {
@@ -21,14 +25,6 @@ public class SUIManager : MonoBehaviour
         {
             SInstance = this;
             DontDestroyOnLoad(gameObject);
-
-            SMyEventSystem = GetComponentInChildren<EventSystem>();
-
-            Canvas childCanvas = GetComponentInChildren<Canvas>();
-            if (childCanvas != null)
-            {
-                SCanvasTran = childCanvas.transform;
-            }
         }
         else
         {
@@ -37,63 +33,79 @@ public class SUIManager : MonoBehaviour
     }
 
     // ==========================================
-    // イベントシステムの重複防止処理
-    // ==========================================
-    private void OnEnable()
-    {
-        SceneManager.sceneLoaded += OnSceneLoaded;
-    }
-
-    private void OnDisable()
-    {
-        SceneManager.sceneLoaded -= OnSceneLoaded;
-    }
-
-    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
-    {
-        if (SInstance == this)
-        {
-            CleanupExternalEventSystems();
-        }
-    }
-
-    private void CleanupExternalEventSystems()
-    {
-        EventSystem[] allEventSystems = FindObjectsByType<EventSystem>(FindObjectsSortMode.None);
-
-        if (allEventSystems.Length <= 1)
-        {
-            return;
-        }
-
-        foreach (EventSystem es in allEventSystems)
-        {
-            if (es != SMyEventSystem)
-            {
-                Destroy(es.gameObject);
-                Debug.Log($"重複している外部のEventSystemを削除しました: {es.gameObject.name}");
-            }
-        }
-    }
-
-    // ==========================================
     // 基本UI機能
     // ==========================================
-    void Start() { }
-    void Update() { }
 
-    public GameObject SShowUI(GameObject ui_prefub)
+    /// <summary>
+    /// Canvasが含まれたUIプレハブを生成して表示します。
+    /// </summary>
+    public GameObject SShowUI(GameObject ui_prefab)
     {
-        if (ui_prefub == null) return null;
-        GameObject spawn_ui = Instantiate(ui_prefub, SCanvasTran);
+        if (ui_prefab == null)
+        {
+            Debug.LogError("生成するUIプレハブが指定されていません！");
+            return null;
+        }
+
+        GameObject spawn_ui = Instantiate(ui_prefab);
         return spawn_ui;
     }
 
+    /// <summary>
+    /// 表示中のUIを削除（非表示）します。
+    /// </summary>
     public void SHideUI(GameObject ui_object)
     {
         if (ui_object != null)
         {
             Destroy(ui_object);
+        }
+    }
+
+    // ==========================================
+    // ポーズUI機能とイベントバインド
+    // ==========================================
+
+    /// <summary>
+    /// ポーズイベントとレジュームイベントをバインドします。
+    /// </summary>
+    public void SBindPauseEvent(Action onPause, Action onResume)
+    {
+        if (onPause != null) OnPauseEvent += onPause;
+        if (onResume != null) OnResumeEvent += onResume;
+    }
+
+    /// <summary>
+    /// ポーズイベントとレジュームイベントのバインドを解除します。
+    /// </summary>
+    public void SUnbindPauseEvent(Action onPause, Action onResume)
+    {
+        if (onPause != null) OnPauseEvent -= onPause;
+        if (onResume != null) OnResumeEvent -= onResume;
+    }
+
+    /// <summary>
+    /// ポーズUIを表示し、バインドされたポーズイベントを発火します。
+    /// </summary>
+    public void SShowPauseUI()
+    {
+        if (SCurrentPauseInstance == null && SPauseUIPrefab != null)
+        {
+            SCurrentPauseInstance = Instantiate(SPauseUIPrefab);
+            OnPauseEvent?.Invoke(); // イベント発火
+        }
+    }
+
+    /// <summary>
+    /// ポーズUIを削除（非表示）し、バインドされたレジュームイベントを発火します。
+    /// </summary>
+    public void SHidePauseUI()
+    {
+        if (SCurrentPauseInstance != null)
+        {
+            Destroy(SCurrentPauseInstance);
+            SCurrentPauseInstance = null;
+            OnResumeEvent?.Invoke(); // イベント発火
         }
     }
 
@@ -120,14 +132,13 @@ public class SUIManager : MonoBehaviour
     // ==========================================
     public void SPlayFadeIn(float duration = 1.0f)
     {
-        if (SFadePrefab != null && SCanvasTran != null)
+        if (SFadePrefab != null)
         {
             ResetTransitions();
 
-            SCurrentFadeInstance = Instantiate(SFadePrefab, SCanvasTran);
-            SCurrentFadeInstance.transform.SetAsLastSibling();
+            SCurrentFadeInstance = Instantiate(SFadePrefab);
 
-            Animator animator = SCurrentFadeInstance.GetComponent<Animator>();
+            Animator animator = SCurrentFadeInstance.GetComponentInChildren<Animator>();
             if (animator != null)
             {
                 animator.speed = 1.0f / duration;
@@ -136,31 +147,22 @@ public class SUIManager : MonoBehaviour
 
             Destroy(SCurrentFadeInstance, duration + 0.1f);
         }
-        else
-        {
-            Debug.LogError("フェード用のプレハブまたはCanvasTransformが設定されていません！");
-        }
     }
 
     public void SPlayFadeOut(float duration = 1.0f)
     {
-        if (SFadePrefab != null && SCanvasTran != null)
+        if (SFadePrefab != null)
         {
             ResetTransitions();
 
-            SCurrentFadeInstance = Instantiate(SFadePrefab, SCanvasTran);
-            SCurrentFadeInstance.transform.SetAsLastSibling();
+            SCurrentFadeInstance = Instantiate(SFadePrefab);
 
-            Animator animator = SCurrentFadeInstance.GetComponent<Animator>();
+            Animator animator = SCurrentFadeInstance.GetComponentInChildren<Animator>();
             if (animator != null)
             {
                 animator.speed = 1.0f / duration;
                 animator.Play("FadeOut");
             }
-        }
-        else
-        {
-            Debug.LogError("フェード用のプレハブまたはCanvasTransformが設定されていません！");
         }
     }
 
@@ -169,14 +171,13 @@ public class SUIManager : MonoBehaviour
     // ==========================================
     public void SPlayWipeIn(float duration = 1.0f)
     {
-        if (SWipePrefab != null && SCanvasTran != null)
+        if (SWipePrefab != null)
         {
             ResetTransitions();
 
-            SCurrentWipeInstance = Instantiate(SWipePrefab, SCanvasTran);
-            SCurrentWipeInstance.transform.SetAsLastSibling();
+            SCurrentWipeInstance = Instantiate(SWipePrefab);
 
-            Animator animator = SCurrentWipeInstance.GetComponent<Animator>();
+            Animator animator = SCurrentWipeInstance.GetComponentInChildren<Animator>();
             if (animator != null)
             {
                 animator.speed = 1.0f / duration;
@@ -185,31 +186,22 @@ public class SUIManager : MonoBehaviour
 
             Destroy(SCurrentWipeInstance, duration + 0.1f);
         }
-        else
-        {
-            Debug.LogError("ワイプ用のプレハブまたはCanvasTransformが設定されていません！");
-        }
     }
 
     public void SPlayWipeOut(float duration = 1.0f)
     {
-        if (SWipePrefab != null && SCanvasTran != null)
+        if (SWipePrefab != null)
         {
             ResetTransitions();
 
-            SCurrentWipeInstance = Instantiate(SWipePrefab, SCanvasTran);
-            SCurrentWipeInstance.transform.SetAsLastSibling();
+            SCurrentWipeInstance = Instantiate(SWipePrefab);
 
-            Animator animator = SCurrentWipeInstance.GetComponent<Animator>();
+            Animator animator = SCurrentWipeInstance.GetComponentInChildren<Animator>();
             if (animator != null)
             {
                 animator.speed = 1.0f / duration;
                 animator.Play("WipeOut");
             }
-        }
-        else
-        {
-            Debug.LogError("ワイプ用のプレハブまたはCanvasTransformが設定されていません！");
         }
     }
 }
