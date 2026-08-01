@@ -13,6 +13,13 @@ using UnityEngine.InputSystem;
 /// 動作仕様:
 /// - Headの子オブジェクトとして配置し、ローカルX軸(ピッチ)のみを回転させる。
 /// - ヨー(Y軸)・ロール(Z軸)には一切関与しない(親であるHeadのヨー回転がそのまま反映される)。
+/// - キーボード+マウス操作: マウスでのピッチ操作は、これまで通り常にそのまま加算する
+///   (オートセンタリングは行わない)。
+/// - コントローラー操作: 右スティックの上下操作でピッチを変化させる。
+///   スティックをニュートラルに戻すと、ピッチは自動で0度(水平)へ戻る(オートセンタリング)。
+///   戻る速度は Return Speed で調整する。
+///   ※ゲームパッドが実際に接続されている時のみオートセンタリングが働く
+///   (未接続時はスティック値が常に0として読めてしまい、マウス操作と競合するのを防ぐため)。
 ///
 /// セットアップ:
 /// 1. Headの子として、このスクリプトをアタッチしたGameObject(UDRotater)を配置する。
@@ -33,13 +40,13 @@ public class UDRotater : MonoBehaviour
     private InputActionReference stickLookActionReference;
 
     [Header("ピッチ回転設定")]
-    [Tooltip("上下(ピッチ)の可動範囲の下限(度)。真下方向に近いほど小さい値。")]
+    [Tooltip("上下(ピッチ)の可動範囲の下限(度)。俯角。パラメーター表: -10度")]
     [SerializeField]
-    private float pitchMin = -60f;
+    private float pitchMin = -10f;
 
-    [Tooltip("上下(ピッチ)の可動範囲の上限(度)。真上方向に近いほど大きい値。")]
+    [Tooltip("上下(ピッチ)の可動範囲の上限(度)。仰角。パラメーター表: 30度")]
     [SerializeField]
-    private float pitchMax = 60f;
+    private float pitchMax = 30f;
 
     [Tooltip("チェックすると上下方向の入力を反転する")]
     [SerializeField]
@@ -51,9 +58,14 @@ public class UDRotater : MonoBehaviour
     private float mouseSensitivity = 0.2f;
 
     [Header("ゲームパッド設定")]
-    [Tooltip("右スティックでのピッチ回転感度(度/秒)")]
+    [Tooltip("右スティック操作時のピッチ回転速度(度/秒)。パラメーター表の「上下操作時速度」: 60度")]
     [SerializeField]
-    private float gamepadSensitivity = 180f;
+    private float gamepadSensitivity = 60f;
+
+    [Tooltip("スティックをニュートラルに戻した時、ピッチを0度へ戻す速度(度/秒)。" +
+             "パラメーター表の「戻り時速度」: 90度")]
+    [SerializeField]
+    private float returnSpeed = 90f;
 
     [Tooltip("この大きさ未満の右スティック入力は無視する(遊び・誤差吸収用)")]
     [SerializeField]
@@ -125,9 +137,26 @@ public class UDRotater : MonoBehaviour
 
         float pitchSign = invertPitch ? 1f : -1f;
 
-        // ピッチ(上下)のみを加算する(ヨーはTankHead側で扱うためここでは扱わない)
+        // マウス操作(キーボード+マウス)は、常にそのまま加算する。元通り、自由に見られる。
         pitch += mouseDelta.y * mouseSensitivity * pitchSign;
-        pitch += stickInput.y * gamepadSensitivity * Time.deltaTime * pitchSign;
+
+        // オートセンタリングは「ゲームパッドが実際に接続されている場合」のみ行う。
+        // ゲームパッドが無いと右スティック入力は常に0として読み取られてしまうため、
+        // 接続判定を入れないとキーボード+マウス操作時にも毎フレーム0度へ戻ろうとして
+        // マウス操作と competing してしまう(この不具合を修正した)。
+        if (Gamepad.current != null)
+        {
+            if (stickInput.y != 0f)
+            {
+                // スティックに上下入力がある間は、通常通りその入力量で回転させる
+                pitch += stickInput.y * gamepadSensitivity * Time.deltaTime * pitchSign;
+            }
+            else
+            {
+                // スティックがニュートラルに戻ったら、ピッチを0度へ戻り時速度で戻す(オートセンタリング)
+                pitch = Mathf.MoveTowards(pitch, 0f, returnSpeed * Time.deltaTime);
+            }
+        }
 
         // 可動範囲を制限
         pitch = Mathf.Clamp(pitch, pitchMin, pitchMax);

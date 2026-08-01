@@ -14,8 +14,8 @@ GameObject:
   - component: {fileID: 8946973748715233286}
   - component: {fileID: -2386186889785138086}
   - component: {fileID: -1156891526435848132}
-  m_Layer: 0
-  m_Name: Bullte
+  m_Layer: 11
+  m_Name: HBullte
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -154,5 +154,5 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TankProjectile
   flightSpeed: 30
-  straightFlightDistance: 12
+  straightFlightDistance: 6
   lifeTime: 10
