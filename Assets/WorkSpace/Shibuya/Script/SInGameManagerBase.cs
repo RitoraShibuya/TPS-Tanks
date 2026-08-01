@@ -1,4 +1,3 @@
-using System; 
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -9,10 +8,6 @@ public class SInGameManagerBase : SGameManagerBase
     [Header("Input Settings")]
     [SerializeField] private InputActionReference SPauseAction;
 
-    // ポーズ状態が変わったことを通知するイベント 
-    public event Action<bool> OnPauseStateChanged;
-
-    // 現在のポーズ状態
     public bool IsPaused { get; private set; } = false;
 
     // ==========================================
@@ -24,6 +19,7 @@ public class SInGameManagerBase : SGameManagerBase
         {
             SPauseAction.action.Enable();
             SPauseAction.action.performed += OnPauseInput;
+            Debug.Log($"[{GetType().Name}] ポーズアクションの入力を有効化しました。");
         }
     }
 
@@ -33,16 +29,18 @@ public class SInGameManagerBase : SGameManagerBase
         {
             SPauseAction.action.performed -= OnPauseInput;
             SPauseAction.action.Disable();
+            Debug.Log($"[{GetType().Name}] ポーズアクションの入力を無効化しました。");
         }
     }
 
     private void OnPauseInput(InputAction.CallbackContext context)
     {
+        Debug.Log($"[{GetType().Name}] 🎮 ポーズ入力検知！");
         TogglePause();
     }
 
     // ==========================================
-    // ポーズ制御処理
+    // ポーズ制御処理（フェードと同じ方式に統一！）
     // ==========================================
     public void TogglePause()
     {
@@ -53,40 +51,33 @@ public class SInGameManagerBase : SGameManagerBase
     {
         IsPaused = isPause;
 
-        // 状態に合わせて時間を止めたり動かしたりする
-        if (IsPaused)
+        // 1. 時間を操作する
+        Time.timeScale = IsPaused ? 0f : 1f;
+        Debug.Log($"[{GetType().Name}] 時間を {(IsPaused ? "停止" : "再開")} しました。");
+
+        // 2. UIManagerに直接「UIを出せ/消せ」と命令する（フェードと同じ！）
+        if (SUIManager.SInstance != null)
         {
-            PauseGame();
+            if (IsPaused)
+            {
+                SUIManager.SInstance.SShowPauseUI();
+            }
+            else
+            {
+                SUIManager.SInstance.SHidePauseUI();
+            }
         }
-        else
-        {
-            ResumeGame();
-        }
-
-        // 状態が変わったことをSUIManager等に通知
-        OnPauseStateChanged?.Invoke(IsPaused);
     }
 
-    private void PauseGame() 
-    {
-        Time.timeScale = 0f;
-    }
-
-    private void ResumeGame()
-    {
-        Time.timeScale = 1f;
-    }
-
-    
+    // ==========================================
+    // 既存のゲーム進行処理
+    // ==========================================
     protected virtual void Start()
     {
         SUIManager.SInstance.SPlayFadeIn(0.4f);
     }
 
-    void Update()
-    {
-
-    }
+    void Update() { }
 
     public virtual void OnGameClear()
     {

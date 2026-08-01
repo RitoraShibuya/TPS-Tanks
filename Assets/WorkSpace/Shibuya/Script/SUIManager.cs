@@ -1,5 +1,4 @@
-using System;
-using UnityEngine;
+ï»¿using UnityEngine;
 
 public class SUIManager : MonoBehaviour
 {
@@ -16,9 +15,6 @@ public class SUIManager : MonoBehaviour
     private GameObject SCurrentWipeInstance;
     private GameObject SCurrentPauseInstance;
 
-    public event Action OnPauseEvent;
-    public event Action OnResumeEvent;
-
     private void Awake()
     {
         if (SInstance == null)
@@ -33,17 +29,17 @@ public class SUIManager : MonoBehaviour
     }
 
     // ==========================================
-    // Šî–{UI‹@”\
+    // åŸºæœ¬UIæ©Ÿèƒ½
     // ==========================================
 
     /// <summary>
-    /// Canvas‚ªŠÜ‚Ü‚ê‚½UIƒvƒŒƒnƒu‚ğ¶¬‚µ‚Ä•\¦‚µ‚Ü‚·B
+    /// CanvasãŒå«ã¾ã‚ŒãŸUIãƒ—ãƒ¬ãƒãƒ–ã‚’ç”Ÿæˆã—ã¦è¡¨ç¤ºã—ã¾ã™ã€‚
     /// </summary>
     public GameObject SShowUI(GameObject ui_prefab)
     {
         if (ui_prefab == null)
         {
-            Debug.LogError("¶¬‚·‚éUIƒvƒŒƒnƒu‚ªw’è‚³‚ê‚Ä‚¢‚Ü‚¹‚ñI");
+            Debug.LogError("ç”Ÿæˆã™ã‚‹UIãƒ—ãƒ¬ãƒãƒ–ãŒæŒ‡å®šã•ã‚Œã¦ã„ã¾ã›ã‚“ï¼");
             return null;
         }
 
@@ -52,7 +48,7 @@ public class SUIManager : MonoBehaviour
     }
 
     /// <summary>
-    /// •\¦’†‚ÌUI‚ğíœi”ñ•\¦j‚µ‚Ü‚·B
+    /// è¡¨ç¤ºä¸­ã®UIã‚’å‰Šé™¤ï¼ˆéè¡¨ç¤ºï¼‰ã—ã¾ã™ã€‚
     /// </summary>
     public void SHideUI(GameObject ui_object)
     {
@@ -63,41 +59,27 @@ public class SUIManager : MonoBehaviour
     }
 
     // ==========================================
-    // ƒ|[ƒYUI‹@”\‚ÆƒCƒxƒ“ƒgƒoƒCƒ“ƒh
+    // ãƒãƒ¼ã‚ºUIæ©Ÿèƒ½ï¼ˆã‚·ãƒ³ãƒ—ãƒ«åŒ–ç‰ˆï¼‰
     // ==========================================
 
     /// <summary>
-    /// ƒ|[ƒYƒCƒxƒ“ƒg‚ÆƒŒƒWƒ…[ƒ€ƒCƒxƒ“ƒg‚ğƒoƒCƒ“ƒh‚µ‚Ü‚·B
-    /// </summary>
-    public void SBindPauseEvent(Action onPause, Action onResume)
-    {
-        if (onPause != null) OnPauseEvent += onPause;
-        if (onResume != null) OnResumeEvent += onResume;
-    }
-
-    /// <summary>
-    /// ƒ|[ƒYƒCƒxƒ“ƒg‚ÆƒŒƒWƒ…[ƒ€ƒCƒxƒ“ƒg‚ÌƒoƒCƒ“ƒh‚ğ‰ğœ‚µ‚Ü‚·B
-    /// </summary>
-    public void SUnbindPauseEvent(Action onPause, Action onResume)
-    {
-        if (onPause != null) OnPauseEvent -= onPause;
-        if (onResume != null) OnResumeEvent -= onResume;
-    }
-
-    /// <summary>
-    /// ƒ|[ƒYUI‚ğ•\¦‚µAƒoƒCƒ“ƒh‚³‚ê‚½ƒ|[ƒYƒCƒxƒ“ƒg‚ğ”­‰Î‚µ‚Ü‚·B
+    /// ãƒãƒ¼ã‚ºUIã‚’è¡¨ç¤ºã—ã¾ã™ã€‚
     /// </summary>
     public void SShowPauseUI()
     {
         if (SCurrentPauseInstance == null && SPauseUIPrefab != null)
         {
             SCurrentPauseInstance = Instantiate(SPauseUIPrefab);
-            OnPauseEvent?.Invoke(); // ƒCƒxƒ“ƒg”­‰Î
+            Debug.Log("[SUIManager] â¸ï¸ ãƒãƒ¼ã‚ºUIã‚’è¡¨ç¤ºã—ã¾ã—ãŸã€‚");
+        }
+        else if (SPauseUIPrefab == null)
+        {
+            Debug.LogWarning("[SUIManager] âš ï¸ ãƒãƒ¼ã‚ºUIã®ãƒ—ãƒ¬ãƒãƒ–ãŒæœªè¨­å®šã§ã™ï¼");
         }
     }
 
     /// <summary>
-    /// ƒ|[ƒYUI‚ğíœi”ñ•\¦j‚µAƒoƒCƒ“ƒh‚³‚ê‚½ƒŒƒWƒ…[ƒ€ƒCƒxƒ“ƒg‚ğ”­‰Î‚µ‚Ü‚·B
+    /// ãƒãƒ¼ã‚ºUIã‚’å‰Šé™¤ï¼ˆéè¡¨ç¤ºï¼‰ã—ã¾ã™ã€‚
     /// </summary>
     public void SHidePauseUI()
     {
@@ -105,12 +87,12 @@ public class SUIManager : MonoBehaviour
         {
             Destroy(SCurrentPauseInstance);
             SCurrentPauseInstance = null;
-            OnResumeEvent?.Invoke(); // ƒCƒxƒ“ƒg”­‰Î
+            Debug.Log("[SUIManager] â–¶ï¸ ãƒãƒ¼ã‚ºUIã‚’éè¡¨ç¤ºã«ã—ã¾ã—ãŸã€‚");
         }
     }
 
     // ==========================================
-    // ‹£‡‘ÎôFŠù‘¶‚Ìƒgƒ‰ƒ“ƒWƒVƒ‡ƒ“UI‚ğ‚·‚×‚Ä”jŠü‚·‚é
+    // ç«¶åˆå¯¾ç­–ï¼šæ—¢å­˜ã®ãƒˆãƒ©ãƒ³ã‚¸ã‚·ãƒ§ãƒ³UIã‚’ã™ã¹ã¦ç ´æ£„ã™ã‚‹
     // ==========================================
     private void ResetTransitions()
     {
@@ -128,7 +110,7 @@ public class SUIManager : MonoBehaviour
     }
 
     // ==========================================
-    // ƒtƒF[ƒh‰‰o
+    // ãƒ•ã‚§ãƒ¼ãƒ‰æ¼”å‡º
     // ==========================================
     public void SPlayFadeIn(float duration = 1.0f)
     {
@@ -167,7 +149,7 @@ public class SUIManager : MonoBehaviour
     }
 
     // ==========================================
-    // ƒƒCƒv‰‰o
+    // ãƒ¯ã‚¤ãƒ—æ¼”å‡º
     // ==========================================
     public void SPlayWipeIn(float duration = 1.0f)
     {

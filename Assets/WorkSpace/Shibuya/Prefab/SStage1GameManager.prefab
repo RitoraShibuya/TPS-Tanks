@@ -45,3 +45,4 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SStage1GameManager
   SStageID: 1
+  SPauseAction: {fileID: 6827021402304958262, guid: e600f60921a0b7f489c0f8e7e4480bc4, type: 3}
