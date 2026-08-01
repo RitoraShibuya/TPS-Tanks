@@ -39,6 +39,15 @@ using UnityEngine.InputSystem;
 /// </summary>
 public class TankHead : MonoBehaviour
 {
+    [Header("Input Action")]
+    [Tooltip("マウス移動量に使用するInputAction(Vector2)。TankControls.inputactionsの「MouseLook」を割り当てる。")]
+    [SerializeField]
+    private InputActionReference mouseLookActionReference;
+
+    [Tooltip("ゲームパッド右スティックに使用するInputAction(Vector2)。TankControls.inputactionsの「StickLook」を割り当てる。")]
+    [SerializeField]
+    private InputActionReference stickLookActionReference;
+
     [Header("ヨー回転設定")]
     [Tooltip("マウスでのヨー回転感度")]
     [SerializeField]
@@ -58,9 +67,6 @@ public class TankHead : MonoBehaviour
     [SerializeField]
     private float horizontalDeadzoneBand = 0f;
 
-    private InputAction mouseLookAction;
-    private InputAction stickLookAction;
-
     // ワールド基準のヨー角度(Bodyの回転とは無関係に、プレイヤー操作のみで変化する)
     private float worldYaw;
 
@@ -68,43 +74,46 @@ public class TankHead : MonoBehaviour
     {
         // 初期回転をworldYawに反映しておく(Headに最初から向きが付いている場合のズレ防止)
         worldYaw = transform.eulerAngles.y;
-
-        // マウス移動量(デルタ)取得用アクション
-        mouseLookAction = new InputAction(
-            name: "MouseLook",
-            type: InputActionType.Value,
-            expectedControlType: "Vector2"
-        );
-        mouseLookAction.AddBinding("<Mouse>/delta");
-
-        // ゲームパッド右スティック取得用アクション
-        stickLookAction = new InputAction(
-            name: "StickLook",
-            type: InputActionType.Value,
-            expectedControlType: "Vector2"
-        );
-        stickLookAction.AddBinding("<Gamepad>/rightStick");
     }
 
     private void OnEnable()
     {
-        mouseLookAction.Enable();
-        stickLookAction.Enable();
+        if (mouseLookActionReference != null)
+        {
+            mouseLookActionReference.action.Enable();
+        }
+
+        if (stickLookActionReference != null)
+        {
+            stickLookActionReference.action.Enable();
+        }
     }
 
     private void OnDisable()
     {
-        mouseLookAction.Disable();
-        stickLookAction.Disable();
+        if (mouseLookActionReference != null)
+        {
+            mouseLookActionReference.action.Disable();
+        }
+
+        if (stickLookActionReference != null)
+        {
+            stickLookActionReference.action.Disable();
+        }
     }
 
     private void Update()
     {
         // マウス入力(1フレームあたりの移動量なので、そのまま感度を掛けて使用)
-        Vector2 mouseDelta = mouseLookAction.ReadValue<Vector2>();
+        Vector2 mouseDelta = mouseLookActionReference != null
+            ? mouseLookActionReference.action.ReadValue<Vector2>()
+            : Vector2.zero;
 
         // 右スティック入力(-1〜1の傾き具合なので、度/秒として時間を掛けて使用)
-        Vector2 stickInput = stickLookAction.ReadValue<Vector2>();
+        Vector2 stickInput = stickLookActionReference != null
+            ? stickLookActionReference.action.ReadValue<Vector2>()
+            : Vector2.zero;
+
         if (stickInput.sqrMagnitude < stickDeadzone * stickDeadzone)
         {
             stickInput = Vector2.zero;

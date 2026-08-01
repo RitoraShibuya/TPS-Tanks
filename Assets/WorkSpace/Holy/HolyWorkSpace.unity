@@ -373,6 +373,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 93b3ffd482849644f828a6d57efd030a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::UDRotater
+  mouseLookActionReference: {fileID: 3843822652149210943, guid: e600f60921a0b7f489c0f8e7e4480bc4, type: 3}
+  stickLookActionReference: {fileID: 4146194663260792507, guid: e600f60921a0b7f489c0f8e7e4480bc4, type: 3}
   pitchMin: -60
   pitchMax: 60
   invertPitch: 0
@@ -526,6 +528,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ff9c03ea4cde7ac4393a11c311e43031, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TankMovement
+  moveActionReference: {fileID: 1057577499507058563, guid: e600f60921a0b7f489c0f8e7e4480bc4, type: 3}
   cameraTransform: {fileID: 1567478848}
   moveSpeed: 5
   rotateSpeed: 100
@@ -831,6 +834,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 50dc056fc6b157e48a29991988a8335d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TankHead
+  mouseLookActionReference: {fileID: 3843822652149210943, guid: e600f60921a0b7f489c0f8e7e4480bc4, type: 3}
+  stickLookActionReference: {fileID: 4146194663260792507, guid: e600f60921a0b7f489c0f8e7e4480bc4, type: 3}
   mouseSensitivity: 0.2
   gamepadSensitivity: 180
   stickDeadzone: 0.1
@@ -1196,6 +1201,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 95ca26ce798cd8f4e84cd034fb6f00ae, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TankWeapon
+  fireActionReference: {fileID: 424858662058167220, guid: e600f60921a0b7f489c0f8e7e4480bc4, type: 3}
   aimSystem: {fileID: 0}
   projectilePrefab: {fileID: 8789974318381885495, guid: a53cfb25220390b40b1c2e4d22dd5450, type: 3}
   muzzlePoint: {fileID: 0}

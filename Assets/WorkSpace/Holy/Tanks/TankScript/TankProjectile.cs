@@ -6,9 +6,9 @@ using UnityEngine;
 /// 仕様:
 /// - 発射された弾は、狙った方向へ直線で飛ぶ。
 /// - 「直線で飛ぶ距離」はInspectorで指定した固定値(Straight Flight Distance)。
-///   その距離を超えたら、重力の影響を受けて落下を開始する。
+///   その距離を超えたら、水平方向の速度をゼロにし、重力の影響を受けて真下に落下を開始する。
 /// - 直線飛行中・落下中を問わず、何かに衝突すればそこで着弾して消える。
-/// - 落下中は、弾を進行方向(速度ベクトル)に向けて回転させる。
+/// - 落下中は、弾を進行方向(速度ベクトル=真下)に向けて回転させる。
 ///
 /// セットアップ:
 /// - 弾のPrefabにこのスクリプトと Rigidbody, Collider(IsTrigger推奨) をアタッチする。
@@ -79,8 +79,10 @@ public class TankProjectile : MonoBehaviour
         float traveledDistance = Vector3.Distance(startPosition, transform.position);
         if (traveledDistance >= straightFlightDistance)
         {
-            // 直線飛行距離を超えた → 落下フェーズへ移行(重力ON、速度はそのまま引き継ぐ)
+            // 直線飛行距離を超えた → 落下フェーズへ移行
+            // 水平方向を含む速度を一旦ゼロにし、重力のみで真下に落下させる
             isFalling = true;
+            rb.linearVelocity = Vector3.zero;
             rb.useGravity = true;
         }
     }

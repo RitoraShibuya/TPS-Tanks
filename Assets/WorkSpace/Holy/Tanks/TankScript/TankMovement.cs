@@ -30,10 +30,19 @@ using UnityEngine.InputSystem;
 ///    タンクが倒れずに安定して動きます(お好みで調整してください)。
 /// 5. Inspector上の「Camera Transform」に、TankHeadをアタッチしたHead(カメラ)のTransformを
 ///    ドラッグ&ドロップで登録してください。未設定の場合はワールド座標基準で動作します。
+/// 6. Inspector上の「Move Action Reference」に、TankControls.inputactions内の
+///    「Tank/Move」アクションを登録してください。バインド(キー割り当て)を変更したい場合は、
+///    このスクリプトを触らず、TankControls.inputactionsをUnityで開いて編集してください。
 /// </summary>
 [RequireComponent(typeof(Rigidbody))]
 public class TankBody : MonoBehaviour
 {
+    [Header("Input Action")]
+    [Tooltip("移動入力に使用するInputAction(Vector2)。TankControls.inputactionsの「Move」を割り当てる。" +
+             "Unity上でバインドを変更すれば、コードを変更せず操作方法を変えられる。")]
+    [SerializeField]
+    private InputActionReference moveActionReference;
+
     [Header("カメラ基準設定")]
     [Tooltip("移動方向の基準にするカメラ(Head)のTransform。" +
              "スティック/WASD上入力でこのTransformが向いている方向へ進むようになる。" +
@@ -61,7 +70,6 @@ public class TankBody : MonoBehaviour
     private float inputDeadzone = 0.1f;
 
     private Rigidbody rb;
-    private InputAction moveAction;
     private Vector2 moveInput;
 
     // 最後に入力された方向を保持(入力が無い間は向きを維持するため)
@@ -86,40 +94,30 @@ public class TankBody : MonoBehaviour
         rb.interpolation = RigidbodyInterpolation.Interpolate;
 
         targetDirection = transform.forward;
-
-        // Move用のInputActionをコード上で定義
-        // (Input Actionアセットを別途作らなくても動作する簡易構成)
-        moveAction = new InputAction(
-            name: "Move",
-            type: InputActionType.Value,
-            expectedControlType: "Vector2"
-        );
-
-        // キーボード WASD を Vector2 として合成
-        moveAction.AddCompositeBinding("2DVector")
-            .With("Up", "<Keyboard>/w")
-            .With("Down", "<Keyboard>/s")
-            .With("Left", "<Keyboard>/a")
-            .With("Right", "<Keyboard>/d");
-
-        // ゲームパッドの左スティックをそのままバインド
-        moveAction.AddBinding("<Gamepad>/leftStick");
     }
 
     private void OnEnable()
     {
-        moveAction.Enable();
+        if (moveActionReference != null)
+        {
+            moveActionReference.action.Enable();
+        }
     }
 
     private void OnDisable()
     {
-        moveAction.Disable();
+        if (moveActionReference != null)
+        {
+            moveActionReference.action.Disable();
+        }
     }
 
     private void Update()
     {
         // 入力値を毎フレーム取得 (x: 左右, y: 前後)
-        moveInput = moveAction.ReadValue<Vector2>();
+        moveInput = moveActionReference != null
+            ? moveActionReference.action.ReadValue<Vector2>()
+            : Vector2.zero;
     }
 
     private void FixedUpdate()

@@ -154,4 +154,5 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TankProjectile
   flightSpeed: 30
+  straightFlightDistance: 12
   lifeTime: 10

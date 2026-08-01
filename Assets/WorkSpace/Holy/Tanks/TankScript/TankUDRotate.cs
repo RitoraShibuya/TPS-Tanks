@@ -21,6 +21,17 @@ using UnityEngine.InputSystem;
 /// </summary>
 public class UDRotater : MonoBehaviour
 {
+    [Header("Input Action")]
+    [Tooltip("マウス移動量に使用するInputAction(Vector2)。TankControls.inputactionsの「MouseLook」を割り当てる。" +
+             "TankHeadと同じアクションを指定してよい。")]
+    [SerializeField]
+    private InputActionReference mouseLookActionReference;
+
+    [Tooltip("ゲームパッド右スティックに使用するInputAction(Vector2)。TankControls.inputactionsの「StickLook」を割り当てる。" +
+             "TankHeadと同じアクションを指定してよい。")]
+    [SerializeField]
+    private InputActionReference stickLookActionReference;
+
     [Header("ピッチ回転設定")]
     [Tooltip("上下(ピッチ)の可動範囲の下限(度)。真下方向に近いほど小さい値。")]
     [SerializeField]
@@ -54,52 +65,52 @@ public class UDRotater : MonoBehaviour
     [SerializeField]
     private float verticalDeadzoneBand = 0f;
 
-    private InputAction mouseLookAction;
-    private InputAction stickLookAction;
-
     private float pitch;
 
     private void Awake()
     {
         // 初期回転をpitchに反映しておく(あらかじめ角度が付いている場合のズレ防止)
         pitch = NormalizePitch(transform.localEulerAngles.x);
-
-        // マウス移動量(デルタ)取得用アクション
-        mouseLookAction = new InputAction(
-            name: "MouseLookUD",
-            type: InputActionType.Value,
-            expectedControlType: "Vector2"
-        );
-        mouseLookAction.AddBinding("<Mouse>/delta");
-
-        // ゲームパッド右スティック取得用アクション
-        stickLookAction = new InputAction(
-            name: "StickLookUD",
-            type: InputActionType.Value,
-            expectedControlType: "Vector2"
-        );
-        stickLookAction.AddBinding("<Gamepad>/rightStick");
     }
 
     private void OnEnable()
     {
-        mouseLookAction.Enable();
-        stickLookAction.Enable();
+        if (mouseLookActionReference != null)
+        {
+            mouseLookActionReference.action.Enable();
+        }
+
+        if (stickLookActionReference != null)
+        {
+            stickLookActionReference.action.Enable();
+        }
     }
 
     private void OnDisable()
     {
-        mouseLookAction.Disable();
-        stickLookAction.Disable();
+        if (mouseLookActionReference != null)
+        {
+            mouseLookActionReference.action.Disable();
+        }
+
+        if (stickLookActionReference != null)
+        {
+            stickLookActionReference.action.Disable();
+        }
     }
 
     private void Update()
     {
         // マウス入力(1フレームあたりの移動量なので、そのまま感度を掛けて使用)
-        Vector2 mouseDelta = mouseLookAction.ReadValue<Vector2>();
+        Vector2 mouseDelta = mouseLookActionReference != null
+            ? mouseLookActionReference.action.ReadValue<Vector2>()
+            : Vector2.zero;
 
         // 右スティック入力(-1〜1の傾き具合なので、度/秒として時間を掛けて使用)
-        Vector2 stickInput = stickLookAction.ReadValue<Vector2>();
+        Vector2 stickInput = stickLookActionReference != null
+            ? stickLookActionReference.action.ReadValue<Vector2>()
+            : Vector2.zero;
+
         if (stickInput.sqrMagnitude < stickDeadzone * stickDeadzone)
         {
             stickInput = Vector2.zero;

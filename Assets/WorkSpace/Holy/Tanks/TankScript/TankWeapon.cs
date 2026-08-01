@@ -14,6 +14,12 @@ using UnityEngine.InputSystem;
 /// </summary>
 public class TankWeapon : MonoBehaviour
 {
+    [Header("Input Action")]
+    [Tooltip("発射入力に使用するInputAction(Button)。TankControls.inputactionsの「Fire」を割り当てる。" +
+             "Unity上でバインドを変更すれば、コードを変更せず発射ボタンを変えられる。")]
+    [SerializeField]
+    private InputActionReference fireActionReference;
+
     [Header("参照")]
     [Tooltip("狙点の計算に使用する TankAimSystem。未設定の場合は自身から取得を試みる。")]
     [SerializeField]
@@ -32,7 +38,6 @@ public class TankWeapon : MonoBehaviour
     [SerializeField]
     private float fireInterval = 0.5f;
 
-    private InputAction fireAction;
     private float fireCooldownRemaining;
     private Collider[] ownerColliders;
 
@@ -51,21 +56,22 @@ public class TankWeapon : MonoBehaviour
         // 戦車自身(Body/Head/UDRotater/MuzullArm/Muzullなど)のColliderを事前に集めておく。
         // 発射した弾がこれらに当たって即座に消えてしまう(自己衝突)のを防ぐために使用する。
         ownerColliders = GetComponentsInParent<Collider>(true);
-
-        // 発射用のInputActionをコード上で定義
-        fireAction = new InputAction(name: "Fire", type: InputActionType.Button);
-        fireAction.AddBinding("<Gamepad>/leftShoulder"); // L1/LBボタン
-        fireAction.AddBinding("<Mouse>/leftButton");     // マウス左クリック
     }
 
     private void OnEnable()
     {
-        fireAction.Enable();
+        if (fireActionReference != null)
+        {
+            fireActionReference.action.Enable();
+        }
     }
 
     private void OnDisable()
     {
-        fireAction.Disable();
+        if (fireActionReference != null)
+        {
+            fireActionReference.action.Disable();
+        }
     }
 
     private void Update()
@@ -75,7 +81,9 @@ public class TankWeapon : MonoBehaviour
             fireCooldownRemaining -= Time.deltaTime;
         }
 
-        if (fireAction.WasPressedThisFrame() && fireCooldownRemaining <= 0f)
+        bool firePressed = fireActionReference != null && fireActionReference.action.WasPressedThisFrame();
+
+        if (firePressed && fireCooldownRemaining <= 0f)
         {
             Fire();
             fireCooldownRemaining = fireInterval;
