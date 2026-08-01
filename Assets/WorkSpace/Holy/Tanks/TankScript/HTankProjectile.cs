@@ -5,8 +5,12 @@ using UnityEngine;
 ///
 /// 仕様:
 /// - 発射された弾は、狙った方向へ直線で飛ぶ。
-/// - 「直線で飛ぶ距離」はInspectorで指定した固定値(Straight Flight Distance)。
-///   その距離を超えたら、水平方向の速度をゼロにし、重力の影響を受けて真下に落下を開始する。
+/// - 「直線で飛ぶ距離」は、発射時にLaunch()の引数として外部(TankWeapon経由でTankAimSystem)
+///   から渡される。この距離を超えたら、水平方向の速度をゼロにし、重力の影響を受けて
+///   真下に落下を開始する。
+///   ※この距離をこのスクリプト自身のInspectorで個別に設定することはしない。
+///     照準(レティクル)の表示距離とズレる原因になるため、TankAimSystemの
+///     「Max Aim Distance」で一元管理する。
 /// - 直線飛行中・落下中を問わず、何かに衝突すればそこで着弾して消える。
 /// - 落下中は、弾を進行方向(速度ベクトル=真下)に向けて回転させる。
 ///
@@ -20,11 +24,7 @@ public class TankProjectile : MonoBehaviour
     [Header("飛行設定")]
     [Tooltip("直線飛行時の速度 (m/s)。仕様書の数値が確定するまでの暫定値。")]
     [SerializeField]
-    private float flightSpeed = 30f;
-
-    [Tooltip("直線で飛ぶ距離(m)。この距離を超えると落下(重力)を開始する。")]
-    [SerializeField]
-    private float straightFlightDistance = 6f;
+    private float flightSpeed = 20f;
 
     [Tooltip("発射から何秒後に自動で消えるか(何にも当たらなかった場合の保険)")]
     [SerializeField]
@@ -34,6 +34,7 @@ public class TankProjectile : MonoBehaviour
 
     private bool isFalling;
     private Vector3 startPosition;
+    private float straightFlightDistance;
 
     private void Awake()
     {
@@ -46,10 +47,15 @@ public class TankProjectile : MonoBehaviour
     /// 弾を発射する。
     /// </summary>
     /// <param name="aimPoint">狙点(ワールド座標)。飛んでいく方向の計算にのみ使用する。</param>
-    public void Launch(Vector3 aimPoint)
+    /// <param name="straightDistance">
+    /// 直線で飛ぶ距離(m)。この距離を超えると落下(重力)を開始する。
+    /// TankAimSystem.MaxAimDistance など、照準側と共有している値を渡すこと。
+    /// </param>
+    public void Launch(Vector3 aimPoint, float straightDistance)
     {
         startPosition = transform.position;
         isFalling = false;
+        straightFlightDistance = straightDistance;
 
         Vector3 direction = (aimPoint - startPosition).normalized;
         if (direction.sqrMagnitude < 0.0001f)
@@ -75,7 +81,7 @@ public class TankProjectile : MonoBehaviour
             return;
         }
 
-        // まだ直線飛行中。Inspectorで指定した距離に到達したかどうかを判定する。
+        // まだ直線飛行中。Launch()で渡された距離に到達したかどうかを判定する。
         float traveledDistance = Vector3.Distance(startPosition, transform.position);
         if (traveledDistance >= straightFlightDistance)
         {

@@ -9,7 +9,13 @@ using UnityEngine;
 /// ① 照準(Muzzleの向いている方向)内に当たり判定付きオブジェクトが存在する場合
 ///    → そのオブジェクトに当たった地点を狙点とする。
 /// ② 存在しない場合
-///    → Muzzleから真っ直ぐ Max Aim Distance(既定 6m)先の地点を狙点とする。
+///    → Muzzleから真っ直ぐ Max Aim Distance 先の地点を狙点とする。
+///
+/// 重要: この Max Aim Distance は、弾(TankProjectile)が直線で飛ぶ距離(落下を始める距離)
+/// と同じ値として共有される。TankWeaponがこの値を弾のLaunch()に渡すため、
+/// 「照準の表示位置」と「実際に弾が落下し始める距離」は常に一致する。
+/// 距離を変更したい場合は、このコンポーネントの Max Aim Distance だけを変更すればよい
+/// (TankProjectile側には距離の設定項目は無い)。
 ///
 /// セットアップ:
 /// - Muzzle(砲口)のGameObjectにアタッチする。
@@ -18,14 +24,21 @@ using UnityEngine;
 public class TankAimSystem : MonoBehaviour
 {
     [Header("照準設定")]
-    [Tooltip("狙点までの最大距離(m)。仕様書記載の既定値は6m。")]
+    [Tooltip("狙点までの最大距離(m)。弾(TankProjectile)が直線で飛ぶ距離(落下を始める距離)としても" +
+             "共有される、唯一の距離設定。パラメーター表の「直線距離」に対応。")]
     [SerializeField]
-    private float maxAimDistance = 6f;
+    private float maxAimDistance = 12f;
 
     [Tooltip("レイキャストで当たり判定を取るレイヤー。" +
-             "戦車自身(Body/Turret/Muzzleなど)は含めないようにレイヤー分けしてください。")]
+             "戦車自身(Body/Turret/Muzzleなど)や弾自身(Bulletレイヤーなど)は" +
+             "含めないようにレイヤー分けしてください。")]
     [SerializeField]
     private LayerMask aimLayerMask = ~0; // 既定は全レイヤー。プロジェクトに合わせて調整してください。
+
+    /// <summary>
+    /// 狙点までの最大距離(=弾の直線飛行距離)。TankWeaponがLaunch()に渡す際に使用する。
+    /// </summary>
+    public float MaxAimDistance => maxAimDistance;
 
     /// <summary>
     /// 現在の狙点(ワールド座標)を取得する。
@@ -43,14 +56,5 @@ public class TankAimSystem : MonoBehaviour
 
         hitSomething = false;
         return transform.position + transform.forward * maxAimDistance;
-    }
-
-    /// <summary>
-    /// 狙点までの距離を取得する(弾の直線飛行距離の計算に使用)。
-    /// </summary>
-    public float GetAimDistance(out bool hitSomething)
-    {
-        Vector3 aimPoint = GetAimWorldPoint(out hitSomething);
-        return Vector3.Distance(transform.position, aimPoint);
     }
 }
