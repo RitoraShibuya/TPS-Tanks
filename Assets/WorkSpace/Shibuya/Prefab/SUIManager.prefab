@@ -44,5 +44,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 95c76f11da7c94940a325ac181168be0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
-  SFadePrefab: {fileID: 7357294121038156798, guid: 39f9ad2e44dca954b92c8b12fae202a6, type: 3}
-  SWipePrefab: {fileID: 7357294121038156798, guid: bb649672fd812c9448e782a1f842c06e, type: 3}
+  SFadePrefab: {fileID: 6218294687743157127, guid: 39f9ad2e44dca954b92c8b12fae202a6, type: 3}
+  SWipePrefab: {fileID: 5233733439179432603, guid: bb649672fd812c9448e782a1f842c06e, type: 3}
+  SPauseUIPrefab: {fileID: 749280715860280562, guid: 3b11606f04810e34a80abf68779b0c0f, type: 3}
