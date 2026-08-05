@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -7,9 +8,20 @@ public class OptionScript : MonoBehaviour
     [SerializeField, Tooltip("生成時にフォーカスを合わせたいButtonをセット")]
     private GameObject FirstSelectedButton;
 
+    private Action SOnResumeAction;
+    private Action SOnReturnAction;
+    private Action SOnRestartAction;
+
     private void Start()
     {
         FocusFirstButton();
+    }
+
+    public void Setup(Action onResume, Action onReturn, Action onRestart)
+    {
+        SOnResumeAction = onResume;
+        SOnReturnAction = onReturn;
+        SOnRestartAction = onRestart;
     }
 
     private void OnEnable()
@@ -36,16 +48,25 @@ public class OptionScript : MonoBehaviour
 
     public void AContinueButton()
     {
-
+        if (SOnResumeAction != null)
+        {
+            SOnResumeAction.Invoke();
+        }
     }
 
     public void AReturnToTitleButton()
     {
-
+        if(SOnReturnAction != null)
+        {
+            SOnReturnAction.Invoke();
+        }
     }
 
     public void ARestartButton()
     {
-
+        if (SOnRestartAction != null)
+        {
+            SOnRestartAction.Invoke();
+        }
     }
 }

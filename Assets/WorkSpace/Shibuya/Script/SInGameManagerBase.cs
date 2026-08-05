@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.SceneManagement;
 
 public class SInGameManagerBase : SGameManagerBase
 {
@@ -7,6 +8,8 @@ public class SInGameManagerBase : SGameManagerBase
 
     [Header("Input Settings")]
     [SerializeField] private InputActionReference SPauseAction;
+    [SerializeField] private InputActionReference SReturnAction;
+    [SerializeField] private InputActionReference SRestartAction;
 
     public bool IsPaused { get; private set; } = false;
 
@@ -19,7 +22,6 @@ public class SInGameManagerBase : SGameManagerBase
         {
             SPauseAction.action.Enable();
             SPauseAction.action.performed += OnPauseInput;
-            Debug.Log($"[{GetType().Name}] ポーズアクションの入力を有効化しました。");
         }
     }
 
@@ -29,18 +31,16 @@ public class SInGameManagerBase : SGameManagerBase
         {
             SPauseAction.action.performed -= OnPauseInput;
             SPauseAction.action.Disable();
-            Debug.Log($"[{GetType().Name}] ポーズアクションの入力を無効化しました。");
         }
     }
 
     private void OnPauseInput(InputAction.CallbackContext context)
     {
-        Debug.Log($"[{GetType().Name}] 🎮 ポーズ入力検知！");
         TogglePause();
     }
 
     // ==========================================
-    // ポーズ制御処理（フェードと同じ方式に統一！）
+    // ポーズ制御処理
     // ==========================================
     public void TogglePause()
     {
@@ -53,14 +53,13 @@ public class SInGameManagerBase : SGameManagerBase
 
         // 1. 時間を操作する
         Time.timeScale = IsPaused ? 0f : 1f;
-        Debug.Log($"[{GetType().Name}] 時間を {(IsPaused ? "停止" : "再開")} しました。");
 
-        // 2. UIManagerに直接「UIを出せ/消せ」と命令する（フェードと同じ！）
+        // 2. UIManagerに直接「UIを出せ/消せ」と命令する
         if (SUIManager.SInstance != null)
         {
             if (IsPaused)
             {
-                SUIManager.SInstance.SShowPauseUI();
+                SUIManager.SInstance.SShowPauseUI(() => SetPause(false),() => OnBackTitle(),()=>OnRestart());
             }
             else
             {
@@ -70,7 +69,7 @@ public class SInGameManagerBase : SGameManagerBase
     }
 
     // ==========================================
-    // 既存のゲーム進行処理
+    // ゲーム進行処理
     // ==========================================
     protected virtual void Start()
     {
@@ -93,9 +92,22 @@ public class SInGameManagerBase : SGameManagerBase
         OnGameEnd();
     }
 
+    private void OnBackTitle()
+    {
+        SetPause(false);
+        OnGameEnd();
+    }
+
     private void OnGameEnd()
     {
         LoadSceneWithDelay("TitleScene", 1.6f);
+        SUIManager.SInstance.SPlayFadeOut(1.6f);
+    }
+
+    private void OnRestart()
+    {
+        SetPause(false);
+        LoadSceneWithDelay(SceneManager.GetActiveScene().name, 1.6f);
         SUIManager.SInstance.SPlayFadeOut(1.6f);
     }
 }
