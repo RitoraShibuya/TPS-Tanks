@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 
 public class SUIManager : MonoBehaviour
 {
@@ -65,16 +66,17 @@ public class SUIManager : MonoBehaviour
     /// <summary>
     /// ポーズUIを表示します。
     /// </summary>
-    public void SShowPauseUI()
+    public void SShowPauseUI(Action onResumeAction, Action onReturnAction, Action onRestartAction)
     {
         if (SCurrentPauseInstance == null && SPauseUIPrefab != null)
         {
             SCurrentPauseInstance = Instantiate(SPauseUIPrefab);
-            Debug.Log("[SUIManager] ⏸️ ポーズUIを表示しました。");
-        }
-        else if (SPauseUIPrefab == null)
-        {
-            Debug.LogWarning("[SUIManager] ⚠️ ポーズUIのプレハブが未設定です！");
+
+            var option = SCurrentPauseInstance.GetComponent<OptionScript>();
+            if (option != null)
+            {
+                option.Setup(onResumeAction,onReturnAction,onRestartAction);
+            }
         }
     }
 
