@@ -30,6 +30,12 @@ public class TankProjectile : MonoBehaviour
     [SerializeField]
     private float lifeTime = 10f;
 
+    [Header("エクセル連携")]
+    [Tooltip("CSV(Excel)からインポートした調整値を反映するためのTankTuningConfig。" +
+             "設定すると、起動時にこのアセットの値で上記のパラメーターが上書きされる。未設定ならこのInspectorの値をそのまま使用する。")]
+    [SerializeField]
+    private TankTuningConfig tuningConfig;
+
     private Rigidbody rb;
 
     private bool isFalling;
@@ -38,9 +44,26 @@ public class TankProjectile : MonoBehaviour
 
     private void Awake()
     {
+        ApplyTuningConfig();
+
         rb = GetComponent<Rigidbody>();
         rb.useGravity = false;
         rb.interpolation = RigidbodyInterpolation.Interpolate;
+    }
+
+    /// <summary>
+    /// TankTuningConfig(CSV/Excelからインポートされた値)が設定されている場合、
+    /// そちらの値でこのスクリプトのパラメーターを上書きする。
+    /// </summary>
+    private void ApplyTuningConfig()
+    {
+        if (tuningConfig == null)
+        {
+            return;
+        }
+
+        flightSpeed = tuningConfig.projectile_FlightSpeed;
+        lifeTime = tuningConfig.projectile_LifeTime;
     }
 
     /// <summary>

@@ -26,8 +26,9 @@ using UnityEngine.InputSystem;
 ///    "Input System Package (New)" または "Both" に設定してください。
 /// 2. Package Manager で "Input System" パッケージがインストールされていることを確認してください。
 /// 3. このスクリプトをタンクのBody(車体)のGameObjectにアタッチしてください(Rigidbodyが自動で追加されます)。
-/// 4. Rigidbodyの Constraints で Freeze Rotation X, Z にチェックを入れると
-///    タンクが倒れずに安定して動きます(お好みで調整してください)。
+/// 4. Inspector上の「Lock Height And Tilt」はデフォルトでオン(推奨)。オンの場合、起動時に自動で
+///    重力オフ・Y座標固定・X/Z軸回転(転倒)固定を行うため、Rigidbodyの Constraints を手動で
+///    いじる必要はない。地形に高低差がある場合のみオフにして、重力・Colliderで挙動を作る。
 /// 5. Inspector上の「Camera Transform」に、TankHeadをアタッチしたHead(カメラ)のTransformを
 ///    ドラッグ&ドロップで登録してください。未設定の場合はワールド座標基準で動作します。
 /// 6. Inspector上の「Move Action Reference」に、TankControls.inputactions内の
@@ -69,6 +70,20 @@ public class TankBody : MonoBehaviour
     [SerializeField]
     private float inputDeadzone = 0.1f;
 
+    [Header("物理設定")]
+    [Tooltip("チェックすると、起動時に自動で「重力(Use Gravity)をオフ」「Y座標(高さ)を固定」" +
+             "「X軸・Z軸の回転(転倒)を固定」に設定する。地形が平坦な戦車ゲームでは、これをオンにしておくと" +
+             "Colliderのすり抜け等による落下トラブルを避けられるため推奨。地形に高低差があり、" +
+             "重力で自然に地面に沿わせたい場合のみオフにする。")]
+    [SerializeField]
+    private bool lockHeightAndTilt = true;
+
+    [Header("エクセル連携")]
+    [Tooltip("CSV(Excel)からインポートした調整値を反映するためのTankTuningConfig。" +
+             "設定すると、起動時にこのアセットの値で上記のパラメーターが上書きされる。未設定ならこのInspectorの値をそのまま使用する。")]
+    [SerializeField]
+    private TankTuningConfig tuningConfig;
+
     private Rigidbody rb;
     private Vector2 moveInput;
 
@@ -86,6 +101,8 @@ public class TankBody : MonoBehaviour
 
     private void Awake()
     {
+        ApplyTuningConfig();
+
         rb = GetComponent<Rigidbody>();
 
         // MovePosition/MoveRotationはFixedUpdateのタイミングでしか座標を更新しないため、
@@ -93,7 +110,38 @@ public class TankBody : MonoBehaviour
         // Bodyの子であるHeadなどもこの影響を受けるため、ここで自動設定しておく。
         rb.interpolation = RigidbodyInterpolation.Interpolate;
 
+        if (lockHeightAndTilt)
+        {
+            // 重力を切り、Y座標(高さ)・X軸回転・Z軸回転(=転倒)を固定する。
+            // このスクリプトは移動も回転もMovePosition/MoveRotationで完全にスクリプト制御しているため、
+            // 本来Unityの物理的な重力に頼る必要がない。重力を有効にしたまま
+            // MovePosition(非Kinematic Rigidbody)で毎フレーム位置を上書きする組み合わせは、
+            // Collider・地形の設定次第で沈み込み/すり抜けが起きやすいため、
+            // 平坦な地形を前提に「高さを固定してしまう」ことで根本的に回避する。
+            rb.useGravity = false;
+            rb.constraints |= RigidbodyConstraints.FreezePositionY
+                             | RigidbodyConstraints.FreezeRotationX
+                             | RigidbodyConstraints.FreezeRotationZ;
+        }
+
         targetDirection = transform.forward;
+    }
+
+    /// <summary>
+    /// TankTuningConfig(CSV/Excelからインポートされた値)が設定されている場合、
+    /// そちらの値でこのスクリプトのパラメーターを上書きする。
+    /// </summary>
+    private void ApplyTuningConfig()
+    {
+        if (tuningConfig == null)
+        {
+            return;
+        }
+
+        moveSpeed = tuningConfig.body_MoveSpeed;
+        rotateSpeed = tuningConfig.body_RotateSpeed;
+        moveAngleThreshold = tuningConfig.body_MoveAngleThreshold;
+        inputDeadzone = tuningConfig.body_InputDeadzone;
     }
 
     private void OnEnable()
