@@ -1,0 +1,132 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1001 &7037681127034860373
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: 204ec7f10c2d94f449503b55ebbd59f0, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 204ec7f10c2d94f449503b55ebbd59f0, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 204ec7f10c2d94f449503b55ebbd59f0, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 204ec7f10c2d94f449503b55ebbd59f0, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 204ec7f10c2d94f449503b55ebbd59f0, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 204ec7f10c2d94f449503b55ebbd59f0, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 204ec7f10c2d94f449503b55ebbd59f0, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 204ec7f10c2d94f449503b55ebbd59f0, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 204ec7f10c2d94f449503b55ebbd59f0, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 204ec7f10c2d94f449503b55ebbd59f0, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 204ec7f10c2d94f449503b55ebbd59f0, type: 3}
+      propertyPath: m_Name
+      value: Helicopter01
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 204ec7f10c2d94f449503b55ebbd59f0, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 6164616904816945317}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 204ec7f10c2d94f449503b55ebbd59f0, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 3089085517963332478}
+  m_SourcePrefab: {fileID: 100100000, guid: 204ec7f10c2d94f449503b55ebbd59f0, type: 3}
+--- !u!4 &4540836271557618651 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -2400815295472822130, guid: 204ec7f10c2d94f449503b55ebbd59f0, type: 3}
+  m_PrefabInstance: {fileID: 7037681127034860373}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &5664283205721169620 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -5822786935221211775, guid: 204ec7f10c2d94f449503b55ebbd59f0, type: 3}
+  m_PrefabInstance: {fileID: 7037681127034860373}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &7358992635066799294 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 204ec7f10c2d94f449503b55ebbd59f0, type: 3}
+  m_PrefabInstance: {fileID: 7037681127034860373}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &7884593911135407620 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 204ec7f10c2d94f449503b55ebbd59f0, type: 3}
+  m_PrefabInstance: {fileID: 7037681127034860373}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &6164616904816945317
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7884593911135407620}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 53166a17b61f0344ea2e4aa60eab4894, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HelicopterEngine
+  statsData: {fileID: 0}
+  bodyTransform: {fileID: 0}
+  turretTransform: {fileID: 0}
+  gunBarrelTransform: {fileID: 0}
+  mainRotor: {fileID: 0}
+  tailRotor: {fileID: 0}
+  maxRotorSpeed: 1500
+  acceleration: 300
+  deceleration: 150
+  tailRotorMultiplier: 1.2
+--- !u!114 &3089085517963332478
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7884593911135407620}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4b0fa7528e98144469183a3815766bc3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FlyingTankAI
+  statsData: {fileID: 0}
+  bodyTransform: {fileID: 7358992635066799294}
+  turretTransform: {fileID: 7358992635066799294}
+  gunBarrelTransform: {fileID: 7358992635066799294}
+  mainRotor: {fileID: 4540836271557618651}
+  tailRotor: {fileID: 5664283205721169620}
+  waypoints: []
+  waypointThreshold: 1
+  target: {fileID: 0}
+  maxRotorSpeed: 1500
+  acceleration: 500
+  deceleration: 150
+  tailRotorMultiplier: 1.2
