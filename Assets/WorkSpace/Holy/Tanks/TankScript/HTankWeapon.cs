@@ -11,6 +11,13 @@ using UnityEngine.InputSystem;
 /// - 「Projectile Prefab」に、TankProjectile が付いた弾のPrefabを登録する。
 /// - 「Muzzle Point」に、弾の発射位置・向きの基準にするTransform
 ///   (未設定ならこのスクリプト自身のTransformを使用)を登録する。
+///
+/// 自己衝突回避について:
+/// - 発射した弾が戦車自身(Body/Turret/UDRotaterなど)に当たって即座に消えないよう、
+///   Awake時に transform.root(戦車プレハブの一番上のGameObject)配下の
+///   全Colliderを集めて衝突を無視する設定にしている。
+///   そのため、BodyやTurretがバラバラの階層に配置されていても、
+///   「戦車プレハブの一番上のGameObjectの下に全部まとまっている」限り正しく動作する。
 /// </summary>
 public class TankWeapon : MonoBehaviour
 {
@@ -38,11 +45,19 @@ public class TankWeapon : MonoBehaviour
     [SerializeField]
     private float fireInterval = 0.5f;
 
+    [Header("エクセル連携")]
+    [Tooltip("CSV(Excel)からインポートした調整値を反映するためのTankTuningConfig。" +
+             "設定すると、起動時にこのアセットの値でFire Intervalが上書きされる。未設定ならこのInspectorの値をそのまま使用する。")]
+    [SerializeField]
+    private TankTuningConfig tuningConfig;
+
     private float fireCooldownRemaining;
     private Collider[] ownerColliders;
 
     private void Awake()
     {
+        ApplyTuningConfig();
+
         if (aimSystem == null)
         {
             aimSystem = GetComponent<TankAimSystem>();
@@ -53,9 +68,31 @@ public class TankWeapon : MonoBehaviour
             muzzlePoint = transform;
         }
 
-        // 戦車自身(Body/Head/UDRotater/MuzullArm/Muzullなど)のColliderを事前に集めておく。
+        // 戦車自身(Body/Turret/Muzzle/UDRotaterなど)のColliderを事前に集めておく。
         // 発射した弾がこれらに当たって即座に消えてしまう(自己衝突)のを防ぐために使用する。
-        ownerColliders = GetComponentsInParent<Collider>(true);
+        //
+        // 【重要】GetComponentsInParentではなく、必ず transform.root
+        // (シーン階層の一番上=戦車プレハブの一番上のGameObject)から
+        // GetComponentsInChildren で集める。
+        // BodyがMuzzleの祖先(親・祖父母…)でない階層構成
+        // (例: TS_PCTank の直下に Body と Turret が兄弟として並んでいる場合)では、
+        // GetComponentsInParentだとBody側のColliderを取得できず、
+        // 発射直後の弾がBodyに衝突して消えてしまう不具合が起こるため。
+        ownerColliders = transform.root.GetComponentsInChildren<Collider>(true);
+    }
+
+    /// <summary>
+    /// TankTuningConfig(CSV/Excelからインポートされた値)が設定されている場合、
+    /// そちらの値でこのスクリプトのパラメーターを上書きする。
+    /// </summary>
+    private void ApplyTuningConfig()
+    {
+        if (tuningConfig == null)
+        {
+            return;
+        }
+
+        fireInterval = tuningConfig.weapon_FireInterval;
     }
 
     private void OnEnable()

@@ -77,12 +77,41 @@ public class UDRotater : MonoBehaviour
     [SerializeField]
     private float verticalDeadzoneBand = 0f;
 
+    [Header("エクセル連携")]
+    [Tooltip("CSV(Excel)からインポートした調整値を反映するためのTankTuningConfig。" +
+             "設定すると、起動時にこのアセットの値で上記のパラメーターが上書きされる。未設定ならこのInspectorの値をそのまま使用する。")]
+    [SerializeField]
+    private TankTuningConfig tuningConfig;
+
     private float pitch;
 
     private void Awake()
     {
+        ApplyTuningConfig();
+
         // 初期回転をpitchに反映しておく(あらかじめ角度が付いている場合のズレ防止)
         pitch = NormalizePitch(transform.localEulerAngles.x);
+    }
+
+    /// <summary>
+    /// TankTuningConfig(CSV/Excelからインポートされた値)が設定されている場合、
+    /// そちらの値でこのスクリプトのパラメーターを上書きする。
+    /// </summary>
+    private void ApplyTuningConfig()
+    {
+        if (tuningConfig == null)
+        {
+            return;
+        }
+
+        pitchMin = tuningConfig.ud_PitchMin;
+        pitchMax = tuningConfig.ud_PitchMax;
+        invertPitch = tuningConfig.ud_InvertPitch;
+        mouseSensitivity = tuningConfig.ud_MouseSensitivity;
+        gamepadSensitivity = tuningConfig.ud_GamepadSensitivity;
+        returnSpeed = tuningConfig.ud_ReturnSpeed;
+        stickDeadzone = tuningConfig.ud_StickDeadzone;
+        verticalDeadzoneBand = tuningConfig.ud_VerticalDeadzoneBand;
     }
 
     private void OnEnable()

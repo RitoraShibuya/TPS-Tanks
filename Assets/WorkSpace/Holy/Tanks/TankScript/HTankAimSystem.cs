@@ -35,10 +35,35 @@ public class TankAimSystem : MonoBehaviour
     [SerializeField]
     private LayerMask aimLayerMask = ~0; // 既定は全レイヤー。プロジェクトに合わせて調整してください。
 
+    [Header("エクセル連携")]
+    [Tooltip("CSV(Excel)からインポートした調整値を反映するためのTankTuningConfig。" +
+             "設定すると、起動時にこのアセットの値でMax Aim Distanceが上書きされる。未設定ならこのInspectorの値をそのまま使用する。")]
+    [SerializeField]
+    private TankTuningConfig tuningConfig;
+
     /// <summary>
     /// 狙点までの最大距離(=弾の直線飛行距離)。TankWeaponがLaunch()に渡す際に使用する。
     /// </summary>
     public float MaxAimDistance => maxAimDistance;
+
+    private void Awake()
+    {
+        ApplyTuningConfig();
+    }
+
+    /// <summary>
+    /// TankTuningConfig(CSV/Excelからインポートされた値)が設定されている場合、
+    /// そちらの値でこのスクリプトのパラメーターを上書きする。
+    /// </summary>
+    private void ApplyTuningConfig()
+    {
+        if (tuningConfig == null)
+        {
+            return;
+        }
+
+        maxAimDistance = tuningConfig.aim_MaxAimDistance;
+    }
 
     /// <summary>
     /// 現在の狙点(ワールド座標)を取得する。

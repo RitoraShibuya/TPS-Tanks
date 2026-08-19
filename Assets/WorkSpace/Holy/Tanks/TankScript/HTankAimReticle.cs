@@ -47,11 +47,19 @@ public class TankAimReticle : MonoBehaviour
     [SerializeField]
     private float stickDeadzone = 0.1f;
 
+    [Header("エクセル連携")]
+    [Tooltip("CSV(Excel)からインポートした調整値を反映するためのTankTuningConfig。" +
+             "設定すると、起動時にこのアセットの値で上記のパラメーターが上書きされる。未設定ならこのInspectorの値をそのまま使用する。")]
+    [SerializeField]
+    private TankTuningConfig tuningConfig;
+
     private RectTransform rectTransform;
     private CanvasGroup canvasGroup;
 
     private void Awake()
     {
+        ApplyTuningConfig();
+
         rectTransform = GetComponent<RectTransform>();
         canvasGroup = GetComponent<CanvasGroup>();
 
@@ -61,8 +69,30 @@ public class TankAimReticle : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// TankTuningConfig(CSV/Excelからインポートされた値)が設定されている場合、
+    /// そちらの値でこのスクリプトのパラメーターを上書きする。
+    /// </summary>
+    private void ApplyTuningConfig()
+    {
+        if (tuningConfig == null)
+        {
+            return;
+        }
+
+        yScreenOffset = tuningConfig.reticle_YScreenOffset;
+        verticalStickCoefficient = tuningConfig.reticle_VerticalStickCoefficient;
+        stickDeadzone = tuningConfig.reticle_StickDeadzone;
+    }
+
     private void OnEnable()
     {
+        // 【重要】StickLookはTankHead(Turret)・UDRotaterと同じ実体を共有していることが多い。
+        // InputActionのEnable/Disableは「参照カウント」ではなく単純なON/OFFの状態切り替えなので、
+        // 複数のスクリプトが同じアクションに対して個別にDisable()を呼ぶと、
+        // 他のスクリプトが使っている分まで一緒に止まってしまう。
+        // そのため、このスクリプトではEnableだけ行い、Disableは呼ばない
+        // (TankHead/UDRotater側が管理しているEnable状態に相乗りするだけにする)。
         if (stickLookActionReference != null)
         {
             stickLookActionReference.action.Enable();
@@ -71,10 +101,11 @@ public class TankAimReticle : MonoBehaviour
 
     private void OnDisable()
     {
-        if (stickLookActionReference != null)
-        {
-            stickLookActionReference.action.Disable();
-        }
+        // 意図的に何もしない。
+        // このGameObjectが非表示(SetActive(false))になった際に、共有しているStickLookアクション
+        // まで一緒にDisableしてしまうと、TankHead/UDRotater側の視点操作まで止まってしまうため
+        // (実際にこれが原因で「スティックでの視点操作が効かなくなる」不具合が起きたことがある)。
+        // StickLookの有効/無効の管理は、常時アクティブなTankHead/UDRotater側に任せる。
     }
 
     private void LateUpdate()
@@ -118,6 +149,12 @@ public class TankAimReticle : MonoBehaviour
         }
         else
         {
+            // 【注意】CanvasGroupが無いと、非表示にする際にGameObject自体をSetActive(false)する。
+            // これによりOnDisable()が呼ばれるが、上記の通りOnDisable()では何もしないよう変更済みなので
+            // 現在は問題ないはず。ただし、このGameObjectにアタッチされた他のコンポーネントの
+            // 動作(Update等)も一緒に止まってしまう点は変わらないため、
+            // 可能であればこのGameObjectにCanvasGroupコンポーネントを追加し、
+            // こちらのSetActive経路を使わないようにすることを推奨する。
             gameObject.SetActive(visible);
         }
     }
