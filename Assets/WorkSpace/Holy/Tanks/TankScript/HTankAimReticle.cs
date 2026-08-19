@@ -1,5 +1,4 @@
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 /// <summary>
 /// 照準UI(レティクル)を画面に表示するスクリプト。
@@ -8,23 +7,25 @@ using UnityEngine.InputSystem;
 /// - 狙点(TankAimSystemが計算するワールド座標)を画面上の2D座標に変換し、
 ///   UIレイヤーで表示する。
 /// - Y軸オフセットを加えて表示する。
-/// - Rスティックの上下操作(仰角)に対し、係数を持って照準も上下に追加移動する。
+/// - 上下(仰角)の追加移動は、UDRotaterが持つ「実際のピッチ角度(CurrentPitch)」を
+///   直接参照して計算する。
+///   ※以前は右スティックの生入力(stickInput.y)をそのまま係数倍していたが、
+///     これだとマウス操作時に全く反応しない上、UDRotater側の可動範囲クランプや
+///     オートセンタリング(戻り速度)を無視した動きになり、実際のカメラの傾きと
+///     レティクルの見た目がズレる不具合があった。UDRotaterのCurrentPitchを見る
+///     方式にすることで、マウス/スティックどちらの操作でも、また可動範囲の端や
+///     オートセンタリング中でも、常に実際のピッチ角度と完全に一致した動きになる。
 ///
 /// セットアップ:
 /// - Canvas(Screen Space - Overlay 推奨)の下にUI Imageを配置し、
 ///   そのUI ImageのGameObjectにこのスクリプトをアタッチする。
 /// - 「Aim System」に、Muzzleに付いている TankAimSystem を登録する。
 /// - 「Render Camera」に、実際に描画しているカメラ(UDRotaterの子のCameraなど)を登録する。
+/// - 「Pitch Source」に、UDRotaterをアタッチしたGameObjectを登録する。
 /// </summary>
 [RequireComponent(typeof(RectTransform))]
 public class TankAimReticle : MonoBehaviour
 {
-    [Header("Input Action")]
-    [Tooltip("ゲームパッド右スティックに使用するInputAction(Vector2)。TankControls.inputactionsの「StickLook」を割り当てる。" +
-             "TankHead/UDRotaterと同じアクションを指定してよい。")]
-    [SerializeField]
-    private InputActionReference stickLookActionReference;
-
     [Header("参照")]
     [Tooltip("狙点の計算に使用する TankAimSystem")]
     [SerializeField]
@@ -34,22 +35,29 @@ public class TankAimReticle : MonoBehaviour
     [SerializeField]
     private Camera renderCamera;
 
+    [Tooltip("上下(仰角)の追加移動量の計算に使用する UDRotater。" +
+             "実際に反映されているピッチ角度(CurrentPitch)をそのまま参照するため、" +
+             "マウス/スティックどちらの操作でも、可動範囲クランプやオートセンタリング中でも" +
+             "レティクルの動きが実際のカメラの傾きと一致する。")]
+    [SerializeField]
+    private UDRotater pitchSource;
+
     [Header("表示調整")]
     [Tooltip("スクリーン座標へのY軸オフセット(ピクセル)")]
     [SerializeField]
     private float yScreenOffset = 0f;
 
-    [Tooltip("Rスティック上下操作(仰角)に対する追加の上下移動係数(ピクセル)")]
+    [Tooltip("ピッチ角度1度あたりの追加上下移動量(ピクセル)。" +
+             "UDRotaterのCurrentPitch(度)に、この値を掛けて画面上のオフセットにする。")]
     [SerializeField]
-    private float verticalStickCoefficient = 50f;
-
-    [Tooltip("この大きさ未満の右スティック入力は無視する(遊び・誤差吸収用)")]
-    [SerializeField]
-    private float stickDeadzone = 0.1f;
+    private float pixelsPerPitchDegree = 4f;
 
     [Header("エクセル連携")]
     [Tooltip("CSV(Excel)からインポートした調整値を反映するためのTankTuningConfig。" +
-             "設定すると、起動時にこのアセットの値で上記のパラメーターが上書きされる。未設定ならこのInspectorの値をそのまま使用する。")]
+             "設定すると、起動時にこのアセットの値で上記のパラメーターが上書きされる。未設定ならこのInspectorの値をそのまま使用する。" +
+             "【要対応】TankTuningConfig側の項目名を reticle_VerticalStickCoefficient から" +
+             "reticle_PixelsPerPitchDegree 等に変更し、下のApplyTuningConfig()を対応させてください" +
+             "(stickDeadzoneの項目は本スクリプトでは不要になったため参照しません)。")]
     [SerializeField]
     private TankTuningConfig tuningConfig;
 
@@ -81,31 +89,7 @@ public class TankAimReticle : MonoBehaviour
         }
 
         yScreenOffset = tuningConfig.reticle_YScreenOffset;
-        verticalStickCoefficient = tuningConfig.reticle_VerticalStickCoefficient;
-        stickDeadzone = tuningConfig.reticle_StickDeadzone;
-    }
-
-    private void OnEnable()
-    {
-        // 【重要】StickLookはTankHead(Turret)・UDRotaterと同じ実体を共有していることが多い。
-        // InputActionのEnable/Disableは「参照カウント」ではなく単純なON/OFFの状態切り替えなので、
-        // 複数のスクリプトが同じアクションに対して個別にDisable()を呼ぶと、
-        // 他のスクリプトが使っている分まで一緒に止まってしまう。
-        // そのため、このスクリプトではEnableだけ行い、Disableは呼ばない
-        // (TankHead/UDRotater側が管理しているEnable状態に相乗りするだけにする)。
-        if (stickLookActionReference != null)
-        {
-            stickLookActionReference.action.Enable();
-        }
-    }
-
-    private void OnDisable()
-    {
-        // 意図的に何もしない。
-        // このGameObjectが非表示(SetActive(false))になった際に、共有しているStickLookアクション
-        // まで一緒にDisableしてしまうと、TankHead/UDRotater側の視点操作まで止まってしまうため
-        // (実際にこれが原因で「スティックでの視点操作が効かなくなる」不具合が起きたことがある)。
-        // StickLookの有効/無効の管理は、常時アクティブなTankHead/UDRotater側に任せる。
+        pixelsPerPitchDegree = tuningConfig.reticle_PixelsPerPitchDegree;
     }
 
     private void LateUpdate()
@@ -126,17 +110,15 @@ public class TankAimReticle : MonoBehaviour
             return;
         }
 
-        // Rスティック上下入力を読み取り、係数を掛けて追加のオフセットにする
-        Vector2 stickInput = stickLookActionReference != null
-            ? stickLookActionReference.action.ReadValue<Vector2>()
-            : Vector2.zero;
+        // UDRotaterの実際のピッチ角度(マウス/スティック入力・可動範囲クランプ・
+        // オートセンタリングを全て反映済みの値)を直接参照して上下オフセットを計算する。
+        // これにより、操作方法や状態(端に張り付いている/戻っている最中)に関わらず、
+        // レティクルの上下位置が常に実際のカメラの傾きと一致する。
+        float pitchOffset = pitchSource != null
+            ? pitchSource.CurrentPitch * pixelsPerPitchDegree
+            : 0f;
 
-        if (stickInput.sqrMagnitude < stickDeadzone * stickDeadzone)
-        {
-            stickInput = Vector2.zero;
-        }
-
-        screenPoint.y += yScreenOffset + (stickInput.y * verticalStickCoefficient);
+        screenPoint.y += yScreenOffset + pitchOffset;
 
         rectTransform.position = new Vector3(screenPoint.x, screenPoint.y, 0f);
     }

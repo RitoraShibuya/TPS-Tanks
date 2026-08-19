@@ -85,6 +85,19 @@ public class UDRotater : MonoBehaviour
 
     private float pitch;
 
+    /// <summary>
+    /// 現在のピッチ角度(度)。マウス/スティック入力・可動範囲クランプ・
+    /// オートセンタリングを全て反映した「実際の値」。
+    /// TankAimReticleなど、他スクリプトから現在の傾きを参照したい場合はこれを使う。
+    /// </summary>
+    public float CurrentPitch => pitch;
+
+    /// <summary>可動範囲の下限(度)。俯角。</summary>
+    public float PitchMin => pitchMin;
+
+    /// <summary>可動範囲の上限(度)。仰角。</summary>
+    public float PitchMax => pitchMax;
+
     private void Awake()
     {
         ApplyTuningConfig();
