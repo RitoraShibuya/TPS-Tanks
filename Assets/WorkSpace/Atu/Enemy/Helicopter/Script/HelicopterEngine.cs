@@ -2,146 +2,436 @@ using UnityEngine;
 
 public class FlyingTankController : MonoBehaviour
 {
-    [Header("ステータスデータ設定")]
+    // =========================================================
+    // データ
+    // =========================================================
+
+    [Header("ステータスデータ")]
     [SerializeField] private FlyingTankData statsData;
 
+
+    // =========================================================
+    // パーツ参照
+    // =========================================================
+
     [Header("パーツ参照")]
-    [SerializeField] private Transform bodyTransform;          // 車体 (Body)
-    [SerializeField] private Transform turretTransform;        // 砲塔 (Turret)
-    [SerializeField] private Transform gunBarrelTransform;     // 砲身 (上下Turret)
-    [SerializeField] private Transform mainRotor;             // メインローター
-    [SerializeField] private Transform tailRotor;             // テールローター
+    [SerializeField] private Transform bodyTransform;
+    [SerializeField] private Transform turretTransform;
+    [SerializeField] private Transform gunBarrelTransform;
+    [SerializeField] private Transform mainRotor;
+    [SerializeField] private Transform tailRotor;
 
-    [Header("ローターエンジン設定")]
-    [SerializeField] private float maxRotorSpeed = 1500f;     // 最高速度
-    [SerializeField] private float acceleration = 300f;      // 加速度
-    [SerializeField] private float deceleration = 150f;      // 減速度
-    [SerializeField] private float tailRotorMultiplier = 1.2f;// テールローター速度倍率
 
-    private float currentRotorSpeed = 0f;
+    // =========================================================
+    // ローター設定
+    // =========================================================
+
+    [Header("ローター設定")]
+    [SerializeField] private float maxRotorSpeed = 1500f;
+    [SerializeField] private float rotorAcceleration = 300f;
+    [SerializeField] private float rotorDeceleration = 150f;
+    [SerializeField] private float tailRotorMultiplier = 1.2f;
+
+    private float currentRotorSpeed;
     private bool isEngineOn = true;
-    private float lastAttackTime = 0f;
+
+
+    // =========================================================
+    // 砲身設定
+    // =========================================================
+
+    [Header("砲身設定")]
+    [SerializeField] private float minGunPitch = -10f;
+    [SerializeField] private float maxGunPitch = 30f;
+
+    private float currentGunPitch;
+
+
+    // =========================================================
+    // 戦闘関連
+    // =========================================================
+
+    [Header("戦闘設定")]
+    [SerializeField] private Transform muzzleTransform;
+
+    private float lastAttackTime;
     private int currentHp;
+
+
+    // =========================================================
+    // Unity Events
+    // =========================================================
 
     private void Start()
     {
-        if (statsData != null)
-        {
-            currentHp = statsData.maxHp;
-        }
+        Initialize();
     }
 
     private void Update()
     {
-        // 1. ローター回転（エンジン状態に応じて可変）
-        HandleRotorEngine();
+        UpdateRotor();
 
-        if (statsData == null) return;
+        if (statsData == null)
+            return;
 
-        // 2. 飛行高度維持（目標高度 6m へ補間移動）
-        HandleFlightAltitude();
+        UpdateFlight();
 
-        // 3. 移動・車体旋回処理（移動可フラグのチェック）
         if (statsData.canMove)
         {
-            HandleMovementAndRotation();
+            HandleMovement();
         }
     }
 
-    /// <summary>
-    /// ローターの加速・減速および回転処理
-    /// </summary>
-    private void HandleRotorEngine()
+
+    // =========================================================
+    // 初期化
+    // =========================================================
+
+    private void Initialize()
+    {
+        if (statsData == null)
+            return;
+
+        currentHp = statsData.maxHp;
+
+        // 現在の砲身角度を初期値として取得
+        if (gunBarrelTransform != null)
+        {
+            currentGunPitch = NormalizeAngle(
+                gunBarrelTransform.localEulerAngles.x
+            );
+        }
+    }
+
+
+    // =========================================================
+    // ローター
+    // =========================================================
+
+    private void UpdateRotor()
     {
         float targetSpeed = isEngineOn ? maxRotorSpeed : 0f;
-        float rate = isEngineOn ? acceleration : deceleration;
-        currentRotorSpeed = Mathf.MoveTowards(currentRotorSpeed, targetSpeed, rate * Time.deltaTime);
+        float speedChange = isEngineOn
+            ? rotorAcceleration
+            : rotorDeceleration;
 
-        if (mainRotor != null)
-        {
-            mainRotor.Rotate(Vector3.up * currentRotorSpeed * Time.deltaTime, Space.Self);
-        }
+        currentRotorSpeed = Mathf.MoveTowards(
+            currentRotorSpeed,
+            targetSpeed,
+            speedChange * Time.deltaTime
+        );
 
-        if (tailRotor != null)
-        {
-            tailRotor.Rotate(Vector3.forward * (currentRotorSpeed * tailRotorMultiplier) * Time.deltaTime, Space.Self);
-        }
+        RotateMainRotor();
+        RotateTailRotor();
     }
 
-    /// <summary>
-    /// 設定された飛行高度（飛行高度 6m）を維持する処理
-    /// </summary>
-    private void HandleFlightAltitude()
+    private void RotateMainRotor()
     {
-        Vector3 currentPos = transform.position;
-        float targetY = statsData.flightAltitude;
+        if (mainRotor == null)
+            return;
 
-        // スムーズに目標高度に上昇・維持
-        currentPos.y = Mathf.Lerp(currentPos.y, targetY, Time.deltaTime * 2.0f);
-        transform.position = currentPos;
+        mainRotor.Rotate(
+            Vector3.up * currentRotorSpeed * Time.deltaTime,
+            Space.Self
+        );
     }
 
-    /// <summary>
-    /// 入力に応じた移動（5m/s）およびBody回転（180度/s）
-    /// </summary>
-    private void HandleMovementAndRotation()
+    private void RotateTailRotor()
     {
-        float moveInput = Input.GetAxis("Vertical");    // W/S キー
-        float turnInput = Input.GetAxis("Horizontal");  // A/D キー
+        if (tailRotor == null)
+            return;
 
-        // 車体の回転（Body回転速度: 180度/sec）
-        if (bodyTransform != null && turnInput != 0f)
-        {
-            bodyTransform.Rotate(Vector3.up * turnInput * statsData.bodyRotationSpeed * Time.deltaTime, Space.Self);
-        }
-
-        // 車体の正面方向へ移動（移動スピード: 5m/sec）
-        Transform moveReference = bodyTransform != null ? bodyTransform : transform;
-        Vector3 moveDirection = moveReference.forward * moveInput;
-        transform.position += moveDirection * statsData.moveSpeed * Time.deltaTime;
+        tailRotor.Rotate(
+            Vector3.forward *
+            currentRotorSpeed *
+            tailRotorMultiplier *
+            Time.deltaTime,
+            Space.Self
+        );
     }
 
+
+    // =========================================================
+    // 飛行
+    // =========================================================
+
+    private void UpdateFlight()
+    {
+        MaintainAltitude();
+    }
+
+    private void MaintainAltitude()
+    {
+        Vector3 position = transform.position;
+
+        float targetHeight = statsData.flightAltitude;
+
+        position.y = Mathf.Lerp(
+            position.y,
+            targetHeight,
+            Time.deltaTime * 2f
+        );
+
+        transform.position = position;
+    }
+
+
+    // =========================================================
+    // 移動
+    // =========================================================
+
+    private void HandleMovement()
+    {
+        float moveInput = Input.GetAxis("Vertical");
+        float turnInput = Input.GetAxis("Horizontal");
+
+        HandleBodyRotation(turnInput);
+        HandleForwardMovement(moveInput);
+    }
+
+    private void HandleBodyRotation(float turnInput)
+    {
+        if (bodyTransform == null)
+            return;
+
+        if (Mathf.Approximately(turnInput, 0f))
+            return;
+
+        float rotationAmount =
+            turnInput *
+            statsData.bodyRotationSpeed *
+            Time.deltaTime;
+
+        bodyTransform.Rotate(
+            Vector3.up * rotationAmount,
+            Space.Self
+        );
+    }
+
+    private void HandleForwardMovement(float moveInput)
+    {
+        if (Mathf.Approximately(moveInput, 0f))
+            return;
+
+        Transform moveReference =
+            bodyTransform != null
+                ? bodyTransform
+                : transform;
+
+        Vector3 direction =
+            moveReference.forward * moveInput;
+
+        transform.position +=
+            direction *
+            statsData.moveSpeed *
+            Time.deltaTime;
+    }
+
+
+    // =========================================================
+    // 砲塔照準
+    // =========================================================
+
     /// <summary>
-    /// 砲塔（Turret 60度/s）と砲身（上下Turret 60度/s）の旋回制御
+    /// 砲塔の左右・砲身の上下を操作する。
+    /// yawInput / pitchInput は -1 ～ 1。
     /// </summary>
-    /// <param name="yawInput">左右旋回入力 (-1 ~ 1)</param>
-    /// <param name="pitchInput">上下傾けての調整入力 (-1 ~ 1)</param>
     public void AimTurret(float yawInput, float pitchInput)
     {
-        if (statsData == null) return;
+        if (statsData == null)
+            return;
 
-        // Turret水平回転 (60度/sec)
-        if (turretTransform != null && yawInput != 0f)
-        {
-            turretTransform.Rotate(Vector3.up * yawInput * statsData.turretRotationSpeed * Time.deltaTime, Space.Self);
-        }
-
-        // 上下Turret（砲身俯仰）回転 (60度/sec)
-        if (gunBarrelTransform != null && pitchInput != 0f)
-        {
-            gunBarrelTransform.Rotate(Vector3.right * pitchInput * statsData.pitchTurretRotationSpeed * Time.deltaTime, Space.Self);
-        }
+        RotateTurret(yawInput);
+        RotateGunBarrel(pitchInput);
     }
 
+    private void RotateTurret(float yawInput)
+    {
+        if (turretTransform == null)
+            return;
+
+        if (Mathf.Approximately(yawInput, 0f))
+            return;
+
+        float rotationAmount =
+            yawInput *
+            statsData.turretRotationSpeed *
+            Time.deltaTime;
+
+        turretTransform.Rotate(
+            Vector3.up * rotationAmount,
+            Space.Self
+        );
+    }
+
+    private void RotateGunBarrel(float pitchInput)
+    {
+        if (gunBarrelTransform == null)
+            return;
+
+        if (Mathf.Approximately(pitchInput, 0f))
+            return;
+
+        currentGunPitch +=
+            pitchInput *
+            statsData.pitchTurretRotationSpeed *
+            Time.deltaTime;
+
+        currentGunPitch = Mathf.Clamp(
+            currentGunPitch,
+            minGunPitch,
+            maxGunPitch
+        );
+
+        Vector3 localRotation =
+            gunBarrelTransform.localEulerAngles;
+
+        localRotation.x = currentGunPitch;
+
+        gunBarrelTransform.localEulerAngles =
+            localRotation;
+    }
+
+
+    // =========================================================
+    // 射撃
+    // =========================================================
+
     /// <summary>
-    /// 砲撃判定（クールダウン 0.2sec）
+    /// 射撃を試みる。
+    /// クールダウン中なら発射しない。
     /// </summary>
     public void TryShoot()
     {
-        if (statsData == null) return;
+        if (statsData == null)
+            return;
 
-        if (Time.time >= lastAttackTime + statsData.attackCooldown)
-        {
-            lastAttackTime = Time.time;
-            ExecuteShoot();
-        }
+        if (!CanShoot())
+            return;
+
+        lastAttackTime = Time.time;
+
+        ExecuteShoot();
+    }
+
+    private bool CanShoot()
+    {
+        return Time.time >=
+               lastAttackTime +
+               statsData.attackCooldown;
     }
 
     private void ExecuteShoot()
     {
-        // 攻撃力 (statsData.attackPower) を考慮した弾の生成などの砲撃処理
+        if (muzzleTransform == null)
+        {
+            Debug.LogWarning(
+                "FlyingTankController: muzzleTransform が設定されていません。",
+                this
+            );
+
+            return;
+        }
+
+        // =====================================================
+        // ここで弾を生成する
+        //
+        // 例:
+        // GameObject bullet = Instantiate(
+        //     bulletPrefab,
+        //     muzzleTransform.position,
+        //     muzzleTransform.rotation
+        // );
+        //
+        // Bullet bulletComponent =
+        //     bullet.GetComponent<Bullet>();
+        //
+        // bulletComponent.Initialize(
+        //     statsData.attackPower
+        // );
+        // =====================================================
+
+        Debug.Log(
+            $"Flying Tank Shoot! Power: {statsData.attackPower}"
+        );
     }
 
-    public void ToggleEngine() => isEngineOn = !isEngineOn;
-    public void SetEngine(bool isOn) => isEngineOn = isOn;
+
+    // =========================================================
+    // エンジン
+    // =========================================================
+
+    public void ToggleEngine()
+    {
+        isEngineOn = !isEngineOn;
+    }
+
+    public void SetEngine(bool isOn)
+    {
+        isEngineOn = isOn;
+    }
+
+    public bool IsEngineOn()
+    {
+        return isEngineOn;
+    }
+
+
+    // =========================================================
+    // HP
+    // =========================================================
+
+    public int GetCurrentHp()
+    {
+        return currentHp;
+    }
+
+    public int GetMaxHp()
+    {
+        return statsData != null
+            ? statsData.maxHp
+            : 0;
+    }
+
+    public void TakeDamage(int damage)
+    {
+        if (damage <= 0)
+            return;
+
+        currentHp -= damage;
+
+        currentHp = Mathf.Max(
+            currentHp,
+            0
+        );
+
+        if (currentHp <= 0)
+        {
+            OnDestroyed();
+        }
+    }
+
+    private void OnDestroyed()
+    {
+        Debug.Log("Flying Tank Destroyed!");
+
+        // TODO:
+        // 爆発エフェクト
+        // 撃破処理
+        // リスポーン
+        // ゲームオーバー処理など
+    }
+
+
+    // =========================================================
+    // Utility
+    // =========================================================
+
+    private float NormalizeAngle(float angle)
+    {
+        if (angle > 180f)
+            angle -= 360f;
+
+        return angle;
+    }
 }
