@@ -1,0 +1,27 @@
+﻿タンク(Player)調整パラメーター一覧 — 「現在値」列(黄色)のみ編集してください,,,,,
+編集後: ファイル > 名前を付けて保存 > CSV UTF-8(コンマ区切り) で保存し、Unityの Tools > Tank > Tuning CSVをインポート… から読み込んでください。,,,,,
+,,,,,
+Script,変数名,Key,設定値,型,説明
+TankHead,マウス感度,head_MouseSensitivity,0.2,float,マウスでのヨー回転感度
+TankHead,右スティック感度(度/秒),head_GamepadSensitivity,180,float,右スティックでのヨー回転感度(度/秒)
+TankHead,スティック不感帯,head_StickDeadzone,0.1,float,この大きさ未満の右スティック入力は無視する
+TankHead,左右不感帯バンド,head_HorizontalDeadzoneBand,0,float,スティックX成分がこの値以内なら左右入力を無視(既定はナシ=0)
+TankAimReticle,Y軸スクリーンオフセット(px),reticle_YScreenOffset,0,float,スクリーン座標へのY軸オフセット(ピクセル)
+TankAimReticle,上下スティック係数(px),reticle_VerticalStickCoefficient,50,float,Rスティック上下操作(仰角)に対する追加の上下移動係数
+TankAimReticle,スティック不感帯,reticle_StickDeadzone,0.1,float,この大きさ未満の右スティック入力は無視する
+TankAimSystem,直線距離(照準/弾 共通),aim_MaxAimDistance,12,float,狙点までの最大距離(m)。弾の直線飛行距離としても共有
+TankBody,移動速度(m/s),body_MoveSpeed,5,float,前進の速度
+TankBody,旋回速度(度/秒),body_RotateSpeed,180,float,入力方向へ向くまでの旋回速度
+TankBody,前進開始角度しきい値(度),body_MoveAngleThreshold,5,float,この角度以内まで向いたら前進開始
+TankBody,移動入力不感帯,body_InputDeadzone,0.1,float,この大きさ未満のスティック入力は無視する
+TankProjectile,飛行速度(m/s),projectile_FlightSpeed,20,float,直線飛行時の速度
+TankProjectile,生存時間(秒),projectile_LifeTime,10,float,発射から自動で消えるまでの秒数
+UDRotater,"俯角(下限, 度)",ud_PitchMin,-10,float,上下(ピッチ)可動範囲の下限
+UDRotater,"仰角(上限, 度)",ud_PitchMax,30,float,上下(ピッチ)可動範囲の上限
+UDRotater,上下反転,ud_InvertPitch,FALSE,bool,TRUE/FALSEで上下入力を反転するか指定
+UDRotater,マウス感度,ud_MouseSensitivity,0.2,float,マウスでのピッチ回転感度
+UDRotater,右スティック感度(度/秒),ud_GamepadSensitivity,60,float,右スティック操作時のピッチ回転速度
+UDRotater,戻り速度(度/秒),ud_ReturnSpeed,90,float,スティックがニュートラルに戻った時の復帰速度
+UDRotater,スティック不感帯,ud_StickDeadzone,0.1,float,この大きさ未満の右スティック入力は無視する
+UDRotater,上下不感帯バンド,ud_VerticalDeadzoneBand,0,float,スティックY成分がこの値以内なら上下入力を無視(既定はナシ=0)
+TankWeapon,発射間隔(秒),weapon_FireInterval,0.5,float,発射間隔(秒)
