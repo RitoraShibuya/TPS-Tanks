@@ -177,7 +177,7 @@ public class UDRotater : MonoBehaviour
             stickInput.y = 0f;
         }
 
-        float pitchSign = invertPitch ? 1f : -1f;
+        float pitchSign = invertPitch ? -1f : 1f;
 
         // マウス操作(キーボード+マウス)は、常にそのまま加算する。元通り、自由に見られる。
         pitch += mouseDelta.y * mouseSensitivity * pitchSign;
