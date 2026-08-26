@@ -11,6 +11,9 @@ public class SInGameManagerBase : SGameManagerBase
     [SerializeField] private InputActionReference SReturnAction;
     [SerializeField] private InputActionReference SRestartAction;
 
+    [Header("UI Settings")]
+    [SerializeField] private GameObject SLevelIntroPrefab;
+
     public bool IsPaused { get; private set; } = false;
 
     // ==========================================
@@ -73,6 +76,21 @@ public class SInGameManagerBase : SGameManagerBase
     // ==========================================
     protected virtual void Start()
     {
+
+        if (SLevelIntroPrefab != null)
+        {
+            // 1. UIManagerに依頼して画面にUIを生成（コピー）する
+            GameObject introUI = SUIManager.SInstance.SShowUI(SLevelIntroPrefab);
+
+            // 2. 生成したUIのコンポーネントを取得
+            var introController = introUI.GetComponent<SLevelIntroUIController>();
+
+            if (introController != null)
+            {
+                // 3. GameManagerが持っている自分の SStageID を渡して演出開始！
+                introController.SetupAndPlay(SStageID);
+            }
+        }
         SUIManager.SInstance.SPlayFadeIn(0.4f);
     }
 
@@ -109,5 +127,10 @@ public class SInGameManagerBase : SGameManagerBase
         SetPause(false);
         LoadSceneWithDelay(SceneManager.GetActiveScene().name, 1.6f);
         SUIManager.SInstance.SPlayFadeOut(1.6f);
+    }
+
+    public int GetStageID()
+    {
+        return SStageID;
     }
 }
