@@ -1,0 +1,37 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f472e1439c0e1274f9ca6ef92faa8868, type: 3}
+  m_Name: TankTuningConfig
+  m_EditorClassIdentifier: Assembly-CSharp::TankTuningConfig
+  head_MouseSensitivity: 0.2
+  head_GamepadSensitivity: 180
+  head_StickDeadzone: 0.1
+  head_HorizontalDeadzoneBand: 0
+  reticle_YScreenOffset: 0
+  reticle_VerticalStickCoefficient: 50
+  reticle_StickDeadzone: 0
+  aim_MaxAimDistance: 12
+  body_MoveSpeed: 5
+  body_RotateSpeed: 180
+  body_MoveAngleThreshold: 5
+  body_InputDeadzone: 0
+  projectile_FlightSpeed: 20
+  projectile_LifeTime: 10
+  ud_PitchMin: -10
+  ud_PitchMax: 30
+  ud_InvertPitch: 0
+  ud_MouseSensitivity: 0.2
+  ud_GamepadSensitivity: 60
+  ud_ReturnSpeed: 90
+  ud_StickDeadzone: 0.1
+  ud_VerticalDeadzoneBand: 0
+  weapon_FireInterval: 0.5
