@@ -51,6 +51,16 @@ public class TankWeapon : MonoBehaviour
     [SerializeField]
     private TankTuningConfig tuningConfig;
 
+    [Header("発射初期位置")]
+    [Tooltip("発射の初期の位置")]
+    [SerializeField]
+    private Vector3 firstLocation;
+
+    [Header("発射回転")]
+    [Tooltip("発射の初期の位置")]
+    [SerializeField]
+    private Quaternion firstRotation;
+
     private float fireCooldownRemaining;
     private Collider[] ownerColliders;
 
@@ -138,7 +148,8 @@ public class TankWeapon : MonoBehaviour
         Vector3 aimPoint = aimSystem.GetAimWorldPoint(out _);
 
         GameObject projectileObj = Instantiate(projectilePrefab, muzzlePoint.position, muzzlePoint.rotation);
-
+        firstLocation = muzzlePoint.position;
+        firstRotation = muzzlePoint.rotation;
         // 弾が戦車自身(Body/Head/UDRotater/Muzullなど)に当たって
         // 即座に消えてしまわないよう、あらかじめ衝突を無視しておく
         Collider[] projectileColliders = projectileObj.GetComponentsInChildren<Collider>();

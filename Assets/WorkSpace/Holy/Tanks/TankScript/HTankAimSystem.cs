@@ -1,4 +1,6 @@
+using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.InputSystem.Layouts;
 
 /// <summary>
 /// 照準点(狙点)の計算を行うスクリプト。
@@ -41,6 +43,12 @@ public class TankAimSystem : MonoBehaviour
     [SerializeField]
     private TankTuningConfig tuningConfig;
 
+    [Header("レイ確認")]
+    [Tooltip("現在のレイの当たっている値を確認する"+
+             "PLの皆さんはいじらないでください")]
+    [SerializeField]
+    private Vector3 LayValiable;
+
     /// <summary>
     /// 狙点までの最大距離(=弾の直線飛行距離)。TankWeaponがLaunch()に渡す際に使用する。
     /// </summary>
@@ -76,6 +84,7 @@ public class TankAimSystem : MonoBehaviour
         if (Physics.Raycast(ray, out RaycastHit hit, maxAimDistance, aimLayerMask, QueryTriggerInteraction.Ignore))
         {
             hitSomething = true;
+            LayValiable = hit.point;
             return hit.point;
         }
 
