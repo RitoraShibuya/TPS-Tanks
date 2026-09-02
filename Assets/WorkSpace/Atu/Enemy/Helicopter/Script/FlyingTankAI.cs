@@ -12,6 +12,10 @@ public class FlyingTankAI : MonoBehaviour
     [SerializeField] private Transform mainRotor;             // メインローター
     [SerializeField] private Transform tailRotor;             // テールローター
 
+    [Header("モデルの正面軸補正設定")]
+    [Tooltip("モデルの見た目の正面がどのローカル軸を向いているか指定（標準はForward、画像のように横を向いているならRight）")]
+    [SerializeField] private ModelForwardAxis modelForwardAxis = ModelForwardAxis.Right;
+
     [Header("AI・巡回設定")]
     [Tooltip("移動巡回する地点のリスト")]
     [SerializeField] private Transform[] waypoints;
@@ -31,28 +35,41 @@ public class FlyingTankAI : MonoBehaviour
     private float lastAttackTime = 0f;
     private int currentWaypointIndex = 0;
 
+    public enum ModelForwardAxis { Forward, Right, Left, Back }
+
     private void Update()
     {
-        // 1. ローター回転
         HandleRotorEngine();
 
         if (statsData == null) return;
 
-        // 2. 飛行高度維持 (仕様: 6m)
         HandleFlightAltitude();
 
-        // 3. 巡回移動 (仕様: canMove ON時)
         if (statsData.canMove && waypoints != null && waypoints.Length > 0)
         {
             HandlePatrolMovement();
         }
 
-        // 4. 索敵および砲塔の自動旋回・攻撃
         HandleTargetDetectionAndAttack();
     }
 
     /// <summary>
-    /// 指定されたポイント（Waypoints）へ順番に移動・旋回
+    /// モデルの向きに合わせた正面方向ベクトルを取得する
+    /// </summary>
+    private Vector3 GetModelForward(Transform t)
+    {
+        Transform targetTransform = t != null ? t : transform;
+        switch (modelForwardAxis)
+        {
+            case ModelForwardAxis.Right: return targetTransform.right;
+            case ModelForwardAxis.Left: return -targetTransform.right;
+            case ModelForwardAxis.Back: return -targetTransform.forward;
+            default: return targetTransform.forward;
+        }
+    }
+
+    /// <summary>
+    /// 指定されたポイント（Waypoints）へ順番に移動・旋回。前進時は前傾姿勢になる。
     /// </summary>
     private void HandlePatrolMovement()
     {
@@ -63,68 +80,103 @@ public class FlyingTankAI : MonoBehaviour
         Vector3 destination = targetWaypoint.position;
         destination.y = transform.position.y;
 
-        Vector3 direction = (destination - transform.position).normalized;
+        Vector3 direction = (destination - transform.position);
+        float distanceToDest = direction.magnitude; // 目的地までの距離
+        direction.Normalize(); // 正規化
+
+        Transform body = bodyTransform != null ? bodyTransform : transform;
 
         if (direction != Vector3.zero)
         {
-            // Bodyの回転（仕様: 180度/s）
-            Quaternion targetRotation = Quaternion.LookRotation(direction);
-            Transform body = bodyTransform != null ? bodyTransform : transform;
-            body.rotation = Quaternion.RotateTowards(body.rotation, targetRotation, statsData.bodyRotationSpeed * Time.deltaTime);
+            Quaternion targetYawRotation = Quaternion.LookRotation(direction);
 
-            // 前方移動（仕様: 5m/s）
-            transform.position = Vector3.MoveTowards(transform.position, destination, statsData.moveSpeed * Time.deltaTime);
+            if (modelForwardAxis == ModelForwardAxis.Right)
+            {
+                targetYawRotation *= Quaternion.Euler(0, -90, 0); // 右向きモデルを正面に向ける補正
+            }
+
+            float speedFactor = Mathf.Clamp01(distanceToDest / waypointThreshold);
+
+            float maxTiltAngle = 0f * speedFactor;
+            float rollAngle = -20f * speedFactor;
+
+            float targetTiltAngle = maxTiltAngle * speedFactor;
+
+            Quaternion tiltRotation = Quaternion.Euler(targetTiltAngle, 0f, rollAngle);
+
+            Quaternion finalTargetRotation = targetYawRotation * tiltRotation;
+
+            body.rotation = Quaternion.RotateTowards(
+                body.rotation,
+                finalTargetRotation,
+                statsData.bodyRotationSpeed * Time.deltaTime
+            );
+
+            if (distanceToDest > 0.01f)
+            {
+                transform.position = Vector3.MoveTowards(
+                    transform.position,
+                    destination,
+                    statsData.moveSpeed * Time.deltaTime
+                );
+            }
         }
 
-        // 地点到達判定 -> 次のウェイポイントへ
-        if (Vector3.Distance(transform.position, destination) <= waypointThreshold)
+        if (distanceToDest <= waypointThreshold)
         {
             currentWaypointIndex = (currentWaypointIndex + 1) % waypoints.Length;
         }
     }
 
-    /// <summary>
-    /// 視界判定（距離7m / 角度20度）と自動照準・攻撃
-    /// </summary>
     private void HandleTargetDetectionAndAttack()
     {
         if (target == null) return;
 
-        Vector3 targetDirection = (target.position - transform.position).normalized;
         float distanceToTarget = Vector3.Distance(transform.position, target.position);
+        if (distanceToTarget > statsData.visionDistance) return;
 
-        Transform body = bodyTransform != null ? bodyTransform : transform;
-        float angleToTarget = Vector3.Angle(body.forward, targetDirection);
-
-        // 視界（角度20度以内かつ距離7m以内）に入っているかチェック
-        bool isInVision = (distanceToTarget <= statsData.visionDistance) && (angleToTarget <= statsData.visionAngle / 2f);
-
-        if (isInVision)
+        // 1. Turret（水平）の旋回
+        if (turretTransform != null)
         {
-            // --- Turret（水平60度/s）をターゲットに向ける ---
-            if (turretTransform != null)
-            {
-                Vector3 turretTargetDir = target.position - turretTransform.position;
-                turretTargetDir.y = 0; // 水平のみ
-                if (turretTargetDir != Vector3.zero)
-                {
-                    Quaternion targetTurretRot = Quaternion.LookRotation(turretTargetDir);
-                    turretTransform.rotation = Quaternion.RotateTowards(turretTransform.rotation, targetTurretRot, statsData.turretRotationSpeed * Time.deltaTime);
-                }
-            }
+            Vector3 turretTargetDir = target.position - turretTransform.position;
+            turretTargetDir.y = 0;
 
-            // --- 上下Turret（俯仰60度/s）をターゲットに向ける ---
-            if (gunBarrelTransform != null)
+            if (turretTargetDir != Vector3.zero)
             {
-                Vector3 barrelTargetDir = target.position - gunBarrelTransform.position;
-                if (barrelTargetDir != Vector3.zero)
-                {
-                    Quaternion targetBarrelRot = Quaternion.LookRotation(barrelTargetDir);
-                    gunBarrelTransform.rotation = Quaternion.RotateTowards(gunBarrelTransform.rotation, targetBarrelRot, statsData.pitchTurretRotationSpeed * Time.deltaTime);
-                }
-            }
+                Quaternion targetTurretRot = Quaternion.LookRotation(turretTargetDir);
+                if (modelForwardAxis == ModelForwardAxis.Right) targetTurretRot *= Quaternion.Euler(0, -90, 0);
 
-            // --- 砲撃実行（クールダウン: 0.2s） ---
+                turretTransform.rotation = Quaternion.RotateTowards(
+                    turretTransform.rotation,
+                    targetTurretRot,
+                    statsData.turretRotationSpeed * Time.deltaTime
+                );
+            }
+        }
+
+        // 2. GunBarrel（上下ピッチ）の旋回
+        if (gunBarrelTransform != null)
+        {
+            Vector3 localTargetPos = turretTransform.InverseTransformPoint(target.position);
+            float targetAngle = -Mathf.Atan2(localTargetPos.y, localTargetPos.z) * Mathf.Rad2Deg;
+
+            Quaternion targetBarrelRot = Quaternion.Euler(targetAngle, 0f, 0f);
+            gunBarrelTransform.localRotation = Quaternion.RotateTowards(
+                gunBarrelTransform.localRotation,
+                targetBarrelRot,
+                statsData.pitchTurretRotationSpeed * Time.deltaTime
+            );
+        }
+
+        // 3. 視界角判定（正しく修正したモデルの正面ベクトルを使用）
+        Transform body = bodyTransform != null ? bodyTransform : transform;
+        Vector3 targetDirection = (target.position - transform.position).normalized;
+
+        // body.forward ではなく GetModelForward(body) を使用
+        float angleToTarget = Vector3.Angle(GetModelForward(body), targetDirection);
+
+        if (angleToTarget <= (statsData.visionAngle / 2f))
+        {
             if (Time.time >= lastAttackTime + statsData.attackCooldown)
             {
                 lastAttackTime = Time.time;
@@ -135,8 +187,7 @@ public class FlyingTankAI : MonoBehaviour
 
     private void ExecuteShoot()
     {
-        // 弾の生成や攻撃音などのロジックをここに実装
-        // Debug.Log($"敵が攻撃! 攻撃力: {statsData.attackPower}");
+        // 攻撃ロジック
     }
 
     private void HandleFlightAltitude()
@@ -156,21 +207,21 @@ public class FlyingTankAI : MonoBehaviour
         if (tailRotor != null) tailRotor.Rotate(Vector3.forward * (currentRotorSpeed * tailRotorMultiplier) * Time.deltaTime, Space.Self);
     }
 
-    // シーンビューで視界範囲と巡回ルートを可視化（デバッグ用）
     private void OnDrawGizmosSelected()
     {
         if (statsData == null) return;
 
-        // 視界範囲（黄色）
         Gizmos.color = Color.yellow;
         Transform body = bodyTransform != null ? bodyTransform : transform;
-        Vector3 leftRay = Quaternion.Euler(0, -statsData.visionAngle / 2f, 0) * body.forward;
-        Vector3 rightRay = Quaternion.Euler(0, statsData.visionAngle / 2f, 0) * body.forward;
+
+        // body.forward ではなく GetModelForward(body) を使用
+        Vector3 modelForward = GetModelForward(body);
+        Vector3 leftRay = Quaternion.Euler(0, -statsData.visionAngle / 2f, 0) * modelForward;
+        Vector3 rightRay = Quaternion.Euler(0, statsData.visionAngle / 2f, 0) * modelForward;
 
         Gizmos.DrawRay(transform.position, leftRay * statsData.visionDistance);
         Gizmos.DrawRay(transform.position, rightRay * statsData.visionDistance);
 
-        // 巡回ルート（青ライン）
         if (waypoints != null && waypoints.Length > 1)
         {
             Gizmos.color = Color.blue;

@@ -18,7 +18,7 @@ MonoBehaviour:
   canMove: 1
   flightAltitude: 6
   visionAngle: 20
-  visionDistance: 7
+  visionDistance: 10
   moveSpeed: 5
   bodyRotationSpeed: 180
   turretRotationSpeed: 60
