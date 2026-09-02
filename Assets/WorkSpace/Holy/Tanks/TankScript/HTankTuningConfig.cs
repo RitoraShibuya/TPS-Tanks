@@ -28,6 +28,14 @@ using UnityEngine;
 /// - InputActionReferenceやLayerMask、Transform、Cameraなどの「参照」系の項目はCSVでは管理しない
 ///   (Excelのセルにドラッグ&ドロップの参照を入れることはできないため)。これらは引き続き各スクリプトの
 ///   Inspectorで直接設定する。
+///
+/// 【変更履歴】
+/// - reticle_VerticalStickCoefficient / reticle_StickDeadzone を廃止し、
+///   reticle_PixelsPerPitchDegree に置き換えました(TankAimReticleがスティック生入力ではなく、
+///   UDRotaterの実際のピッチ角度を参照する方式に変更されたため)。
+///   Player_TankTuning.xlsx側のKey列も、古い2項目を削除して
+///   reticle_PixelsPerPitchDegree の1行に置き換えてください。古いKey名のままだと、
+///   インポート時に「該当フィールドが無い」として無視されるだけで、エラーにはなりません。
 /// </summary>
 [CreateAssetMenu(fileName = "TankTuningConfig", menuName = "Tank/Tuning Config")]
 public class TankTuningConfig : ScriptableObject
@@ -40,8 +48,7 @@ public class TankTuningConfig : ScriptableObject
 
     [Header("TankAimReticle (HTankAimReticle.cs)")]
     public float reticle_YScreenOffset = 0f;
-    public float reticle_VerticalStickCoefficient = 50f;
-    public float reticle_StickDeadzone = 0.1f;
+    public float reticle_PixelsPerPitchDegree = 4f;
 
     [Header("TankAimSystem (HTankAimSystem.cs)")]
     public float aim_MaxAimDistance = 12f;
