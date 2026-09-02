@@ -4,11 +4,21 @@ using UnityEngine.UI;
 
 public class StageSelectNavigation : MonoBehaviour
 {
-    [SerializeField] private Selectable[] stageButtons;
+    [SerializeField] public Selectable[] stageButtons;
     [SerializeField] private RectTransform selectImage;
 
     [Header("クリック時に表示する画像")]
     [SerializeField] private RectTransform clickImage;
+
+    // ▼▼▼ ここから追加 ▼▼▼
+    [Header("進行状況によるロック制御")]
+    [Tooltip("チュートリアルボタンを設定してください")]
+    [SerializeField] private Selectable tutorialButton;
+
+    private const string SaveKeyPrefix = "StageCleared_";
+    // index 0:チュートリアル, 1〜4:ステージ1〜4
+    private bool[] _cleared;
+    // ▲▲▲ ここまで追加 ▲▲▲
 
     private Selectable _lastStageButton;
     private EventSystem _eventSystem;
@@ -19,6 +29,10 @@ public class StageSelectNavigation : MonoBehaviour
         {
             _lastStageButton = stageButtons[0];
         }
+
+        // ▼▼▼ 追加 ▼▼▼
+        TLoadProgress();
+        // ▲▲▲ 追加 ▲▲▲
     }
 
     private void Start()
@@ -45,6 +59,10 @@ public class StageSelectNavigation : MonoBehaviour
         {
             clickImage.gameObject.SetActive(false);
         }
+
+        // ▼▼▼ 追加 ▼▼▼
+        TRefreshInteractable();
+        // ▲▲▲ 追加 ▲▲▲
     }
 
     private void Update()
@@ -103,4 +121,58 @@ public class StageSelectNavigation : MonoBehaviour
             selectImage.gameObject.SetActive(false);
         }
     }
+
+    // ▼▼▼ ここから追加 ▼▼▼
+
+    /// <summary>
+    /// PlayerPrefsからクリア状況を読み込む
+    /// </summary>
+    private void TLoadProgress()
+    {
+        // 0:チュートリアル + stageButtons.Length分(ステージ1〜4)
+        _cleared = new bool[1 + stageButtons.Length];
+
+        for (int i = 0; i < _cleared.Length; i++)
+        {
+            _cleared[i] = PlayerPrefs.GetInt(SaveKeyPrefix + i, 0) == 1;
+        }
+    }
+
+    /// <summary>
+    /// クリア状況にもとづいて各ボタンのinteractableを更新する
+    /// </summary>
+    private void TRefreshInteractable()
+    {
+        if (_cleared == null) return;
+
+        // チュートリアルは常に解放
+        if (tutorialButton != null)
+        {
+            tutorialButton.interactable = true;
+        }
+
+        // ステージ1は「チュートリアルクリア済みか(_cleared[0])」で判定
+        // ステージ2以降は「一つ前のステージがクリア済みか(_cleared[i])」で判定
+        for (int i = 0; i < stageButtons.Length; i++)
+        {
+            if (stageButtons[i] == null) continue;
+            stageButtons[i].interactable = _cleared[i];
+        }
+    }
+
+    /// <summary>
+    /// ステージクリア時に呼び出す。stageIndexは 0:チュートリアル, 1〜4:ステージ1〜4。
+    /// </summary>
+    public void TSetStageCleared(int stageIndex)
+    {
+        if (_cleared == null || stageIndex < 0 || stageIndex >= _cleared.Length) return;
+
+        _cleared[stageIndex] = true;
+        PlayerPrefs.SetInt(SaveKeyPrefix + stageIndex, 1);
+        PlayerPrefs.Save();
+
+        TRefreshInteractable();
+    }
+
+    // ▲▲▲ ここまでクロードコードでの追加 ▲▲▲
 }
