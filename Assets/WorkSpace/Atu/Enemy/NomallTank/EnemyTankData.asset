@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d4ae4a89a8e788c47b16d9857cf332b1, type: 3}
+  m_Name: EnemyTankData
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyTankData
+  attackPower: 1
+  maxHp: 2
+  attackCooldown: 0.2
+  sightAngle: 30
+  sightDistance: 5
+  moveSpeed: 4
+  bodyRotationSpeed: 120
+  turretRotationSpeed: 60
+  pitchTurretRotationSpeed: 60

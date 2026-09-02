@@ -122,6 +122,8 @@ public class SUIManager : MonoBehaviour
 
             SCurrentFadeInstance = Instantiate(SFadePrefab);
 
+            SCurrentFadeInstance.transform.SetAsLastSibling();
+
             Animator animator = SCurrentFadeInstance.GetComponentInChildren<Animator>();
             if (animator != null)
             {
@@ -140,6 +142,8 @@ public class SUIManager : MonoBehaviour
             ResetTransitions();
 
             SCurrentFadeInstance = Instantiate(SFadePrefab);
+
+            SCurrentFadeInstance.transform.SetAsLastSibling();
 
             Animator animator = SCurrentFadeInstance.GetComponentInChildren<Animator>();
             if (animator != null)
