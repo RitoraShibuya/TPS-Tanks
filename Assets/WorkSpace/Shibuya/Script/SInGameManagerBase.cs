@@ -13,6 +13,8 @@ public class SInGameManagerBase : SGameManagerBase
 
     [Header("UI Settings")]
     [SerializeField] private GameObject SLevelIntroPrefab;
+    [SerializeField] private GameObject SGameOverPrefab;
+    [SerializeField] private GameObject SStageClearPrefab;
 
     public bool IsPaused { get; private set; } = false;
 
@@ -103,11 +105,13 @@ public class SInGameManagerBase : SGameManagerBase
         data.SIsCleared = true;
         SProgressManager.SInstance.AddStageData(data);
         OnGameEnd();
+        GameObject clearUI = SUIManager.SInstance.SShowUI(SStageClearPrefab);
     }
 
     public virtual void OnGameOver()
     {
         OnGameEnd();
+        GameObject overUI = SUIManager.SInstance.SShowUI(SGameOverPrefab);
     }
 
     private void OnBackTitle()
@@ -118,8 +122,8 @@ public class SInGameManagerBase : SGameManagerBase
 
     private void OnGameEnd()
     {
-        LoadSceneWithDelay("TitleScene", 1.6f);
-        SUIManager.SInstance.SPlayFadeOut(1.6f);
+        //LoadSceneWithDelay("TitleScene", 1.6f);
+        //SUIManager.SInstance.SPlayFadeOut(1.6f);
     }
 
     private void OnRestart()
