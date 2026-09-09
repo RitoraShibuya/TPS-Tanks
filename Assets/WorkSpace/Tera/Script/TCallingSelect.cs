@@ -3,7 +3,7 @@ using UnityEngine;
 
 public class TCallingSelect : MonoBehaviour
 {
-    public event Action OnCallStageSelect;
+    //public event Action OnCallStageSelect;
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
@@ -18,6 +18,6 @@ public class TCallingSelect : MonoBehaviour
 
     public void TOnCallStageSelect()
     {
-        OnCallStageSelect?.Invoke();
+        //OnCallStageSelect?.Invoke();
     }
 }
