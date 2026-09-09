@@ -46,3 +46,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SStage1GameManager
   SStageID: 1
   SPauseAction: {fileID: 6827021402304958262, guid: e600f60921a0b7f489c0f8e7e4480bc4, type: 3}
+  SReturnAction: {fileID: 0}
+  SRestartAction: {fileID: 0}
+  SLevelIntroPrefab: {fileID: 4089106435084348752, guid: 3e942af4e84fc774ca4c20f1acabf535, type: 3}
+  SGameOverPrefab: {fileID: 6828032440833590539, guid: 75a65bfd66bba8d4faed0ad4dbc67310, type: 3}
+  SStageClearPrefab: {fileID: 5787734373932222438, guid: d39f2cdfa91a6f34297ef02b922f8d4f, type: 3}

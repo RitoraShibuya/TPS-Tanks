@@ -45,3 +45,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: '::'
   SStageID: 0
+  SPauseAction: {fileID: 6827021402304958262, guid: e600f60921a0b7f489c0f8e7e4480bc4, type: 3}
+  SReturnAction: {fileID: 6827021402304958262, guid: e600f60921a0b7f489c0f8e7e4480bc4, type: 3}
+  SRestartAction: {fileID: 0}
+  SLevelIntroPrefab: {fileID: 0}
+  SGameOverPrefab: {fileID: 0}
+  SStageClearPrefab: {fileID: 0}
