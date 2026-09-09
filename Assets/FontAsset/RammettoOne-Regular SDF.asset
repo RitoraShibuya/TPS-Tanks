@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!28 &-2412828963510616728
+--- !u!28 &-5794013752703058737
 Texture2D:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -81,7 +81,7 @@ MonoBehaviour:
     m_StrikethroughOffset: 22
     m_StrikethroughThickness: 4.482422
     m_TabWidth: 23
-  m_Material: {fileID: 5062818111061401179}
+  m_Material: {fileID: 8420587419700746263}
   m_SourceFontFileGUID: ea964a51262de0447a70f22fa12d6ed6
   m_CreationSettings:
     sourceFontFileName: 
@@ -109,7 +109,7 @@ MonoBehaviour:
   m_GlyphTable: []
   m_CharacterTable: []
   m_AtlasTextures:
-  - {fileID: -2412828963510616728}
+  - {fileID: -5794013752703058737}
   m_AtlasTextureIndex: 0
   m_IsMultiAtlasTexturesEnabled: 0
   m_GetFontFeatures: 1
@@ -187,7 +187,7 @@ MonoBehaviour:
     kerningPairs: []
   fallbackFontAssets: []
   atlas: {fileID: 0}
---- !u!21 &5062818111061401179
+--- !u!21 &8420587419700746263
 Material:
   serializedVersion: 8
   m_ObjectHideFlags: 0
@@ -223,7 +223,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MainTex:
-        m_Texture: {fileID: -2412828963510616728}
+        m_Texture: {fileID: -5794013752703058737}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _OutlineTex:
