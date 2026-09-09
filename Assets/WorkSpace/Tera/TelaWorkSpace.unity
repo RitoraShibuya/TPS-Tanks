@@ -518,6 +518,10 @@ PrefabInstance:
       propertyPath: stageSelectNavigation
       value: 
       objectReference: {fileID: 0}
+    - target: {fileID: 1560497909318249367, guid: 35ec6e3c92eae3a439f089055a188b2b, type: 3}
+      propertyPath: m_sharedMaterial
+      value: 
+      objectReference: {fileID: 8420587419700746263, guid: 93892228ef18b734f80dd55544a8d520, type: 2}
     - target: {fileID: 2278547420968928371, guid: 35ec6e3c92eae3a439f089055a188b2b, type: 3}
       propertyPath: selectImage
       value: 
