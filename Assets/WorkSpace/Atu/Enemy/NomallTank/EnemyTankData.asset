@@ -17,7 +17,7 @@ MonoBehaviour:
   attackCooldown: 0.2
   sightAngle: 30
   sightDistance: 5
-  moveSpeed: 4
+  moveSpeed: 10
   bodyRotationSpeed: 120
   turretRotationSpeed: 60
   pitchTurretRotationSpeed: 60

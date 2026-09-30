@@ -1,547 +1,359 @@
 using UnityEngine;
 
-public class EnemyTankController : MonoBehaviour
+public class EnemyTankController : EnemyBase
 {
-    // =========================================================
-    // ステータス
-    // =========================================================
+    private enum PatrolState { Moving, Rotating }
 
-    [Header("ステータス")]
+    [Header("ステータスデータ設定")]
     [SerializeField] private EnemyTankData statsData;
 
-
-    // =========================================================
-    // ターゲット
-    // =========================================================
-
-    [Header("ターゲット")]
-    [SerializeField] private Transform target;
-
-    [SerializeField] private string targetTag = "Player";
-
-
-    // =========================================================
-    // 巡回設定
-    // =========================================================
-
-    [Header("巡回地点")]
-    [Tooltip("Enemy戦車がプレイヤーを発見するまで移動する地点")]
-    [SerializeField] private Transform[] patrolPoints;
-
-    [Tooltip("巡回地点に到着したと判断する距離")]
-    [SerializeField] private float patrolArrivalDistance = 0.2f;
-
-    private int currentPatrolIndex = 0;
-
-
-    // =========================================================
-    // パーツ
-    // =========================================================
-
     [Header("パーツ参照")]
-    [SerializeField] private Transform bodyTransform;
-    [SerializeField] private Transform turretTransform;
-    [SerializeField] private Transform gunBarrelTransform;
-    [SerializeField] private Transform muzzleTransform;
+    [SerializeField] private Transform bodyTransform;          // 車体 (Body)
+    [SerializeField] private Transform turretTransform;        // 砲塔 (Turret)
+    [SerializeField] private Transform gunBarrelTransform;     // 砲身 (上下Turret)
+    [SerializeField] private Transform muzzleTransform;        // 砲口 (発射位置)
 
+    [Header("弾の発射設定")]
+    [SerializeField] private GameObject bulletPrefab;          // 弾のプレハブ
+    [SerializeField] private float bulletSpeed = 20f;         // 弾速
 
-    // =========================================================
-    // 砲身設定
-    // =========================================================
+    [Header("モデルの正面軸補正設定")]
+    [Tooltip("モデルの見た目の正面がどのローカル軸を向いているか指定（標準はForward、横を向いているならRight）")]
+    [SerializeField] private ModelForwardAxis modelForwardAxis = ModelForwardAxis.Forward;
 
-    [Header("砲身設定")]
+    [Header("AI・巡回設定")]
+    [Tooltip("移動巡回する地点のリスト")]
+    [SerializeField] private Transform[] waypoints;
+    [Tooltip("地点に到着したとみなす距離")]
+    [SerializeField] private float waypointThreshold = 0.5f;
+
+    [Header("砲身上下制限")]
     [SerializeField] private float minGunPitch = -10f;
     [SerializeField] private float maxGunPitch = 30f;
 
-    private float currentGunPitch;
+    private float lastAttackTime = 0f;
+    private int currentWaypointIndex = 0;
+    private PatrolState currentPatrolState = PatrolState.Moving;
 
+    public enum ModelForwardAxis { Forward, Right, Left, Back }
 
-    // =========================================================
-    // 戦闘
-    // =========================================================
-
-    private float lastAttackTime;
-    private int currentHp;
-
-
-    // =========================================================
-    // Unity
-    // =========================================================
-
-    private void Start()
+    protected override void Awake()
     {
-        Initialize();
+        base.Awake();
+
+        if (statsData != null)
+        {
+            currentHealth = statsData.maxHp;
+        }
     }
 
     private void Update()
     {
-        if (statsData == null)
-            return;
+        if (statsData == null) return;
 
-        FindTarget();
-
-        // プレイヤーが見つかった場合
+        // ターゲット視界判定 & 戦闘・追従制御
         if (target != null && IsTargetInSight())
         {
-            HandleCombat();
-            return;
+            // ターゲットが視界に入っている場合：照準・攻撃
+            HandleCombatAndTracking();
         }
-
-        // プレイヤーが見つかっていない場合
-        HandlePatrol();
-    }
-
-
-    // =========================================================
-    // 初期化
-    // =========================================================
-
-    private void Initialize()
-    {
-        if (statsData == null)
-            return;
-
-        currentHp = statsData.maxHp;
-
-        if (gunBarrelTransform != null)
+        else
         {
-            currentGunPitch = NormalizeAngle(
-                gunBarrelTransform.localEulerAngles.x
-            );
+            // ターゲットが設定されていない／視界外の場合：通常巡回
+            if (waypoints != null && waypoints.Length > 0)
+            {
+                HandlePatrolMovement();
+            }
         }
     }
 
-
-    // =========================================================
-    // ターゲット検索
-    // =========================================================
-
-    private void FindTarget()
-    {
-        if (target != null)
-            return;
-
-        GameObject player =
-            GameObject.FindGameObjectWithTag(targetTag);
-
-        if (player != null)
-        {
-            target = player.transform;
-        }
-    }
-
-
-    // =========================================================
-    // 巡回
-    // =========================================================
-
-    private void HandlePatrol()
-    {
-        // 巡回地点が設定されていない場合
-        if (patrolPoints == null ||
-            patrolPoints.Length == 0)
-        {
-            return;
-        }
-
-        Transform patrolPoint =
-            patrolPoints[currentPatrolIndex];
-
-        if (patrolPoint == null)
-        {
-            MoveToNextPatrolPoint();
-            return;
-        }
-
-        Vector3 targetPosition =
-            patrolPoint.position;
-
-        Vector3 direction =
-            targetPosition - transform.position;
-
-        // 地上戦車なので高さは無視
-        direction.y = 0f;
-
-        float distance =
-            direction.magnitude;
-
-        // 巡回地点に到着
-        if (distance <= patrolArrivalDistance)
-        {
-            MoveToNextPatrolPoint();
-            return;
-        }
-
-        direction.Normalize();
-
-        // Bodyを巡回地点へ向ける
-        RotateBody(direction);
-
-        // 前進
-        MoveForward();
-    }
-
-
-    // =========================================================
-    // 次の巡回地点へ
-    // =========================================================
-
-    private void MoveToNextPatrolPoint()
-    {
-        currentPatrolIndex++;
-
-        if (currentPatrolIndex >= patrolPoints.Length)
-        {
-            currentPatrolIndex = 0;
-        }
-    }
-
-
-    // =========================================================
-    // プレイヤー視界判定
-    // =========================================================
-
+    /// <summary>
+    /// ターゲットが視界（距離・視野角）に入っているか判定する
+    /// </summary>
     private bool IsTargetInSight()
     {
-        if (target == null)
-            return false;
+        if (target == null) return false;
 
-        Vector3 direction =
-            target.position - transform.position;
+        Vector3 direction = target.position - transform.position;
+        direction.y = 0f; // 水平距離で判定
 
-        // 地上戦車なので高さを無視
-        direction.y = 0f;
-
-        float distance =
-            direction.magnitude;
-
-        // 視界距離
-        if (distance > statsData.sightDistance)
-            return false;
-
-        if (distance <= 0.001f)
-            return true;
+        float distance = direction.magnitude;
+        if (distance > statsData.sightDistance) return false;
 
         direction.Normalize();
 
-        Transform reference =
-            bodyTransform != null
-                ? bodyTransform
-                : transform;
+        Transform body = bodyTransform != null ? bodyTransform : transform;
+        Vector3 forward = GetModelForward(body);
 
-        float angle =
-            Vector3.Angle(
-                reference.forward,
-                direction
-            );
-
-        // 視界角度
-        return angle <= statsData.sightAngle;
+        float angle = Vector3.Angle(forward, direction);
+        return angle <= (statsData.sightAngle / 2f);
     }
 
-
-    // =========================================================
-    // 戦闘
-    // =========================================================
-
-    private void HandleCombat()
+    /// <summary>
+    /// モデルの向きに合わせた正面方向ベクトルを取得する
+    /// </summary>
+    private Vector3 GetModelForward(Transform t)
     {
-        if (target == null)
-            return;
-
-        Vector3 targetPosition =
-            target.position;
-
-        // Bodyをプレイヤー方向へ向ける
-        Vector3 direction =
-            targetPosition - transform.position;
-
-        direction.y = 0f;
-
-        if (direction.sqrMagnitude > 0.01f)
+        Transform targetTransform = t != null ? t : transform;
+        switch (modelForwardAxis)
         {
-            RotateBody(direction.normalized);
+            case ModelForwardAxis.Right: return targetTransform.right;
+            case ModelForwardAxis.Left: return -targetTransform.right;
+            case ModelForwardAxis.Back: return -targetTransform.forward;
+            default: return targetTransform.forward;
+        }
+    }
+
+    /// <summary>
+    /// ターゲットへ車体・砲塔・砲身を向け、射撃を行う
+    /// </summary>
+    private void HandleCombatAndTracking()
+    {
+        if (target == null) return;
+
+        Vector3 targetPosition = target.position;
+        targetPosition.y = transform.position.y; // XZ平面での旋回
+
+        Vector3 direction = (targetPosition - transform.position);
+        direction.y = 0f;
+        direction.Normalize();
+
+        Transform body = bodyTransform != null ? bodyTransform : transform;
+
+        // --- 1. 車体（Body）をターゲットに向ける ---
+        if (direction != Vector3.zero)
+        {
+            Quaternion targetYawRotation = Quaternion.LookRotation(direction);
+            if (modelForwardAxis == ModelForwardAxis.Right)
+            {
+                targetYawRotation *= Quaternion.Euler(0, -90, 0);
+            }
+
+            body.rotation = Quaternion.RotateTowards(
+                body.rotation,
+                targetYawRotation,
+                statsData.bodyRotationSpeed * Time.deltaTime
+            );
         }
 
-        // Turretをプレイヤーへ向ける
-        AimTurretAtTarget(targetPosition);
-
-        // 射撃
-        TryShoot();
-    }
-
-
-    // =========================================================
-    // Body旋回
-    // =========================================================
-
-    private void RotateBody(Vector3 direction)
-    {
-        if (bodyTransform == null)
-            return;
-
-        if (direction.sqrMagnitude <= 0.001f)
-            return;
-
-        Quaternion targetRotation =
-            Quaternion.LookRotation(direction);
-
-        bodyTransform.rotation =
-            Quaternion.RotateTowards(
-                bodyTransform.rotation,
-                targetRotation,
-                statsData.bodyRotationSpeed *
-                Time.deltaTime
-            );
-    }
-
-
-    // =========================================================
-    // 前進
-    // =========================================================
-
-    private void MoveForward()
-    {
-        Transform moveReference =
-            bodyTransform != null
-                ? bodyTransform
-                : transform;
-
-        transform.position +=
-            moveReference.forward *
-            statsData.moveSpeed *
-            Time.deltaTime;
-    }
-
-
-    // =========================================================
-    // Turret照準
-    // =========================================================
-
-    private void AimTurretAtTarget(
-        Vector3 targetPosition)
-    {
-        if (turretTransform == null)
-            return;
-
-        Vector3 direction =
-            targetPosition -
-            turretTransform.position;
-
-        direction.y = 0f;
-
-        if (direction.sqrMagnitude <= 0.001f)
-            return;
-
-        Quaternion targetRotation =
-            Quaternion.LookRotation(direction);
-
-        turretTransform.rotation =
-            Quaternion.RotateTowards(
-                turretTransform.rotation,
-                targetRotation,
-                statsData.turretRotationSpeed *
-                Time.deltaTime
-            );
-
-        AimGunBarrel(targetPosition);
-    }
-
-
-    // =========================================================
-    // 砲身上下
-    // =========================================================
-
-    private void AimGunBarrel(
-        Vector3 targetPosition)
-    {
-        if (gunBarrelTransform == null)
-            return;
-
-        if (gunBarrelTransform.parent == null)
-            return;
-
-        Vector3 localTarget =
-            gunBarrelTransform.parent
-                .InverseTransformPoint(targetPosition);
-
-        float targetPitch =
-            Mathf.Atan2(
-                localTarget.y,
-                localTarget.z
-            ) * Mathf.Rad2Deg;
-
-        targetPitch =
-            Mathf.Clamp(
-                targetPitch,
-                minGunPitch,
-                maxGunPitch
-            );
-
-        currentGunPitch =
-            Mathf.MoveTowards(
-                currentGunPitch,
-                targetPitch,
-                statsData.pitchTurretRotationSpeed *
-                Time.deltaTime
-            );
-
-        Vector3 rotation =
-            gunBarrelTransform.localEulerAngles;
-
-        rotation.x = currentGunPitch;
-
-        gunBarrelTransform.localEulerAngles =
-            rotation;
-    }
-
-
-    // =========================================================
-    // 射撃
-    // =========================================================
-
-    private void TryShoot()
-    {
-        if (Time.time <
-            lastAttackTime +
-            statsData.attackCooldown)
+        // --- 2. 水平砲塔（Turret）照準 ---
+        if (turretTransform != null)
         {
-            return;
+            Vector3 turretTargetDir = target.position - turretTransform.position;
+            turretTargetDir.y = 0f;
+
+            if (turretTargetDir != Vector3.zero)
+            {
+                Quaternion targetTurretRot = Quaternion.LookRotation(turretTargetDir);
+                if (modelForwardAxis == ModelForwardAxis.Right) targetTurretRot *= Quaternion.Euler(0, -90, 0);
+
+                turretTransform.rotation = Quaternion.RotateTowards(
+                    turretTransform.rotation,
+                    targetTurretRot,
+                    statsData.turretRotationSpeed * Time.deltaTime
+                );
+            }
         }
 
-        if (!IsAimingAtTarget())
-            return;
+        // --- 3. 上下砲身（GunBarrel）照準 ---
+        if (gunBarrelTransform != null && turretTransform != null)
+        {
+            Vector3 localTargetPos = turretTransform.InverseTransformPoint(target.position);
+            float targetAngle = -Mathf.Atan2(localTargetPos.y, localTargetPos.z) * Mathf.Rad2Deg;
+            targetAngle = Mathf.Clamp(targetAngle, minGunPitch, maxGunPitch);
 
-        lastAttackTime = Time.time;
+            Quaternion targetBarrelRot = Quaternion.Euler(targetAngle, 0f, 0f);
+            gunBarrelTransform.localRotation = Quaternion.RotateTowards(
+                gunBarrelTransform.localRotation,
+                targetBarrelRot,
+                statsData.pitchTurretRotationSpeed * Time.deltaTime
+            );
+        }
 
-        ExecuteShoot();
+        // --- 4. 射撃判定 ---
+        if (Time.time >= lastAttackTime + statsData.attackCooldown)
+        {
+            if (IsAimingAtTarget())
+            {
+                lastAttackTime = Time.time;
+                ExecuteShoot();
+            }
+        }
     }
 
-
+    /// <summary>
+    /// 照準がターゲットを概ね捉えているか判定
+    /// </summary>
     private bool IsAimingAtTarget()
     {
-        if (muzzleTransform == null)
-            return false;
+        if (target == null) return false;
 
-        if (target == null)
-            return false;
+        Transform checkTransform = turretTransform != null ? turretTransform : transform;
+        Vector3 direction = (target.position - checkTransform.position).normalized;
 
-        Vector3 direction =
-            target.position -
-            muzzleTransform.position;
+        // 砲塔の向きとターゲットへの方向の角度差で判定
+        Vector3 forward = GetModelForward(checkTransform);
+        float angle = Vector3.Angle(forward, direction);
 
-        if (direction.sqrMagnitude <= 0.001f)
-            return true;
-
-        direction.Normalize();
-
-        float angle =
-            Vector3.Angle(
-                muzzleTransform.forward,
-                direction
-            );
-
-        // 5度以内なら射撃
-        return angle <= 5f;
+        return angle <= 10f; // 10度以内なら許可
     }
 
+    /// <summary>
+    /// ウェイポイント移動・旋回巡回処理
+    /// </summary>
+    private void HandlePatrolMovement()
+    {
+        Transform targetWaypoint = waypoints[currentWaypointIndex];
+        if (targetWaypoint == null) return;
 
+        Vector3 destination = targetWaypoint.position;
+        destination.y = transform.position.y;
+
+        Vector3 direction = (destination - transform.position);
+        direction.y = 0f;
+        float distanceToDest = direction.magnitude;
+        direction.Normalize();
+
+        Transform body = bodyTransform != null ? bodyTransform : transform;
+
+        if (currentPatrolState == PatrolState.Moving)
+        {
+            if (direction != Vector3.zero)
+            {
+                Quaternion targetYawRotation = Quaternion.LookRotation(direction);
+                if (modelForwardAxis == ModelForwardAxis.Right)
+                {
+                    targetYawRotation *= Quaternion.Euler(0, -90, 0);
+                }
+
+                body.rotation = Quaternion.RotateTowards(
+                    body.rotation,
+                    targetYawRotation,
+                    statsData.bodyRotationSpeed * Time.deltaTime
+                );
+
+                transform.position = Vector3.MoveTowards(
+                    transform.position,
+                    destination,
+                    statsData.moveSpeed * Time.deltaTime
+                );
+            }
+
+            if (distanceToDest <= waypointThreshold)
+            {
+                currentPatrolState = PatrolState.Rotating;
+                currentWaypointIndex = (currentWaypointIndex + 1) % waypoints.Length;
+            }
+        }
+        else if (currentPatrolState == PatrolState.Rotating)
+        {
+            Transform nextWaypoint = waypoints[currentWaypointIndex];
+            if (nextWaypoint == null) return;
+
+            Vector3 nextDestination = nextWaypoint.position;
+            nextDestination.y = transform.position.y;
+            Vector3 nextDirection = (nextDestination - transform.position);
+            nextDirection.y = 0f;
+            nextDirection.Normalize();
+
+            if (nextDirection != Vector3.zero)
+            {
+                Quaternion targetYawRotation = Quaternion.LookRotation(nextDirection);
+                if (modelForwardAxis == ModelForwardAxis.Right)
+                {
+                    targetYawRotation *= Quaternion.Euler(0, -90, 0);
+                }
+
+                body.rotation = Quaternion.RotateTowards(
+                    body.rotation,
+                    targetYawRotation,
+                    statsData.bodyRotationSpeed * Time.deltaTime
+                );
+
+                if (Quaternion.Angle(body.rotation, targetYawRotation) < 2.0f)
+                {
+                    currentPatrolState = PatrolState.Moving;
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// 弾を発射する
+    /// </summary>
     private void ExecuteShoot()
     {
         if (muzzleTransform == null)
         {
-            Debug.LogWarning(
-                "EnemyTankController: " +
-                "muzzleTransform が設定されていません。",
-                this
-            );
-
+            Debug.LogWarning("EnemyTankController: muzzleTransform が設定されていません。", this);
             return;
         }
 
-        // =====================================================
-        // 弾生成処理
-        // =====================================================
+        if (bulletPrefab == null)
+        {
+            Debug.LogWarning("EnemyTankController: bulletPrefab が設定されていません。", this);
+            return;
+        }
 
-        Debug.Log(
-            $"Enemy Tank Shoot! " +
-            $"Attack Power: {statsData.attackPower}"
-        );
+        if (target == null) return;
 
-        /*
-        GameObject bullet = Instantiate(
+        // 砲口からターゲットへの方向ベクトルを正確に計算
+        Vector3 shootDirection = (target.position - muzzleTransform.position).normalized;
+
+        // 1. 砲口の位置・方向を計算して弾を生成
+        Quaternion bulletRotation = Quaternion.LookRotation(shootDirection);
+        GameObject bulletObj = Instantiate(
             bulletPrefab,
             muzzleTransform.position,
-            muzzleTransform.rotation
+            bulletRotation
         );
 
-        bullet.GetComponent<Projectile>()
-            .Initialize(statsData.attackPower);
-        */
-    }
-
-
-    // =========================================================
-    // ダメージ
-    // =========================================================
-
-    public void TakeDamage(int damage)
-    {
-        if (damage <= 0)
-            return;
-
-        currentHp -= damage;
-
-        currentHp =
-            Mathf.Max(currentHp, 0);
-
-        if (currentHp <= 0)
+        // 2. 計算した射撃方向（shootDirection）を直接渡して発射
+        if (bulletObj.TryGetComponent(out EnemyBullet bullet))
         {
-            OnDestroyed();
+            bullet.Launch(
+                shootDirection,
+                bulletSpeed,
+                statsData.attackPower
+            );
         }
+
+        Debug.Log($"Enemy Tank Shoot! Attack Power: {statsData.attackPower}");
     }
 
-
-    private void OnDestroyed()
+    protected override void Die()
     {
         Debug.Log("Enemy Tank Destroyed!");
-
-        // TODO:
-        // 爆発
-        // 撃破エフェクト
-        // Destroy(gameObject);
+        base.Die();
     }
 
-
-    // =========================================================
-    // HP
-    // =========================================================
-
-    public int GetCurrentHp()
+    private void OnDrawGizmosSelected()
     {
-        return currentHp;
-    }
+        if (statsData == null) return;
 
+        // 視界描画（黄色）
+        Gizmos.color = Color.yellow;
+        Transform body = bodyTransform != null ? bodyTransform : transform;
 
-    public int GetMaxHp()
-    {
-        return statsData != null
-            ? statsData.maxHp
-            : 0;
-    }
+        Vector3 modelForward = GetModelForward(body);
+        Vector3 leftRay = Quaternion.Euler(0, -statsData.sightAngle / 2f, 0) * modelForward;
+        Vector3 rightRay = Quaternion.Euler(0, statsData.sightAngle / 2f, 0) * modelForward;
 
+        Gizmos.DrawRay(transform.position, leftRay * statsData.sightDistance);
+        Gizmos.DrawRay(transform.position, rightRay * statsData.sightDistance);
 
-    // =========================================================
-    // Utility
-    // =========================================================
-
-    private float NormalizeAngle(float angle)
-    {
-        if (angle > 180f)
+        // 巡回ルート描画（青色）
+        if (waypoints != null && waypoints.Length > 1)
         {
-            angle -= 360f;
+            Gizmos.color = Color.blue;
+            for (int i = 0; i < waypoints.Length; i++)
+            {
+                if (waypoints[i] != null)
+                {
+                    Vector3 nextPos = waypoints[(i + 1) % waypoints.Length].position;
+                    Gizmos.DrawLine(waypoints[i].position, nextPos);
+                }
+            }
         }
-
-        return angle;
     }
 }

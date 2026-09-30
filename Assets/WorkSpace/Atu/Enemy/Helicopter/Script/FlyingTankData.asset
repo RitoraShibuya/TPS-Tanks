@@ -12,14 +12,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 49cf40d439f212c448c95bf6ab9e754b, type: 3}
   m_Name: FlyingTankData
   m_EditorClassIdentifier: Assembly-CSharp::FlyingTankData
-  attackPower: 1
-  maxHp: 2
-  attackCooldown: 0.2
-  canMove: 1
-  flightAltitude: 6
-  visionAngle: 20
-  visionDistance: 10
+  maxHealth: 100
   moveSpeed: 5
+  attackPower: 10
+  visionDistance: 50
+  visionAngle: 50
   bodyRotationSpeed: 180
   turretRotationSpeed: 60
   pitchTurretRotationSpeed: 60
+  attackCooldown: 5
+  flightAltitude: 6
+  canMove: 1
