@@ -3,9 +3,9 @@ using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 [RequireComponent(typeof(Selectable))]
-public class TTutorialUpNavigation : MonoBehaviour, IMoveHandler
+public class TutorialUpNavigation : MonoBehaviour, IMoveHandler
 {
-    [Tooltip("未設定の場合、親階層から自動検索します(同一プレハブ内にある想定)")]
+    [Tooltip("必ずInspectorで直接アサインしてください")]
     [SerializeField] private StageSelectNavigation stageSelectNavigation;
 
     private void Awake()
@@ -15,9 +15,14 @@ public class TTutorialUpNavigation : MonoBehaviour, IMoveHandler
             stageSelectNavigation = GetComponentInParent<StageSelectNavigation>();
         }
 
-        if (stageSelectNavigation == null)
+        // ★追加
+        if (stageSelectNavigation != null)
         {
-            Debug.LogWarning($"[{nameof(TutorialUpNavigation)}] StageSelectNavigation が見つかりません。", this);
+            Debug.Log($"[StageSelectButtons] 参照OK: {stageSelectNavigation.gameObject.name} (InstanceID: {stageSelectNavigation.GetInstanceID()})", this);
+        }
+        else
+        {
+            Debug.LogWarning("[StageSelectButtons] StageSelectNavigation が見つかりません。", this);
         }
     }
 
@@ -33,6 +38,9 @@ public class TTutorialUpNavigation : MonoBehaviour, IMoveHandler
 
         var target = stageSelectNavigation.TGetLastStageButton();
         if (target == null) return;
+
+        // ★追加:ロックされているボタンへは移動させない
+        if (!target.interactable) return;
 
         EventSystem.current.SetSelectedGameObject(target.gameObject);
         eventData.Use();

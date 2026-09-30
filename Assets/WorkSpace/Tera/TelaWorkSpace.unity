@@ -341,7 +341,7 @@ MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 1771025765776307468, guid: 35ec6e3c92eae3a439f089055a188b2b, type: 3}
   m_PrefabInstance: {fileID: 1244823657}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
+  m_GameObject: {fileID: 1003906001}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 4e29b1a8efbd4b44bb3f3716e73f07ff, type: 3}
@@ -506,6 +506,29 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1003906001 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 140588437054192255, guid: 35ec6e3c92eae3a439f089055a188b2b, type: 3}
+  m_PrefabInstance: {fileID: 1244823657}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1003906006
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1003906001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f8f0c4e85a713484fbcb6f9881ee9ccc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TutorialUpNavigation
+  stageSelectNavigation: {fileID: 1432900249}
+--- !u!224 &1237145190 stripped
+RectTransform:
+  m_CorrespondingSourceObject: {fileID: 8707820896891305281, guid: 35ec6e3c92eae3a439f089055a188b2b, type: 3}
+  m_PrefabInstance: {fileID: 1244823657}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1244823657
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -514,25 +537,69 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 272069367325656433, guid: 35ec6e3c92eae3a439f089055a188b2b, type: 3}
+      propertyPath: m_Enabled
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 355154994390712351, guid: 35ec6e3c92eae3a439f089055a188b2b, type: 3}
+      propertyPath: m_Sprite
+      value: 
+      objectReference: {fileID: 21300000, guid: ad318d74949ed4d4abfc69ed2b5514b4, type: 3}
     - target: {fileID: 692854290311809052, guid: 35ec6e3c92eae3a439f089055a188b2b, type: 3}
       propertyPath: stageSelectNavigation
       value: 
+      objectReference: {fileID: 1432900249}
+    - target: {fileID: 1467975410458034359, guid: 35ec6e3c92eae3a439f089055a188b2b, type: 3}
+      propertyPath: m_AnchorMax.x
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 1467975410458034359, guid: 35ec6e3c92eae3a439f089055a188b2b, type: 3}
+      propertyPath: m_AnchorMax.y
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 1467975410458034359, guid: 35ec6e3c92eae3a439f089055a188b2b, type: 3}
+      propertyPath: m_AnchorMin.x
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 1467975410458034359, guid: 35ec6e3c92eae3a439f089055a188b2b, type: 3}
+      propertyPath: m_AnchorMin.y
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 1467975410458034359, guid: 35ec6e3c92eae3a439f089055a188b2b, type: 3}
+      propertyPath: m_SizeDelta.x
+      value: 160
+      objectReference: {fileID: 0}
+    - target: {fileID: 1467975410458034359, guid: 35ec6e3c92eae3a439f089055a188b2b, type: 3}
+      propertyPath: m_SizeDelta.y
+      value: 30
       objectReference: {fileID: 0}
     - target: {fileID: 1560497909318249367, guid: 35ec6e3c92eae3a439f089055a188b2b, type: 3}
       propertyPath: m_sharedMaterial
       value: 
       objectReference: {fileID: 8420587419700746263, guid: 93892228ef18b734f80dd55544a8d520, type: 2}
-    - target: {fileID: 2278547420968928371, guid: 35ec6e3c92eae3a439f089055a188b2b, type: 3}
-      propertyPath: selectImage
+    - target: {fileID: 1771025765776307468, guid: 35ec6e3c92eae3a439f089055a188b2b, type: 3}
+      propertyPath: m_Navigation.m_SelectOnUp
       value: 
-      objectReference: {fileID: 2007157466}
-    - target: {fileID: 2278547420968928371, guid: 35ec6e3c92eae3a439f089055a188b2b, type: 3}
-      propertyPath: tutorialButton
+      objectReference: {fileID: 941427109}
+    - target: {fileID: 1771025765776307468, guid: 35ec6e3c92eae3a439f089055a188b2b, type: 3}
+      propertyPath: m_Navigation.m_SelectOnDown
       value: 
       objectReference: {fileID: 0}
     - target: {fileID: 2278547420968928371, guid: 35ec6e3c92eae3a439f089055a188b2b, type: 3}
+      propertyPath: clickImage
+      value: 
+      objectReference: {fileID: 2007157466}
+    - target: {fileID: 2278547420968928371, guid: 35ec6e3c92eae3a439f089055a188b2b, type: 3}
+      propertyPath: selectImage
+      value: 
+      objectReference: {fileID: 1237145190}
+    - target: {fileID: 2278547420968928371, guid: 35ec6e3c92eae3a439f089055a188b2b, type: 3}
+      propertyPath: tutorialButton
+      value: 
+      objectReference: {fileID: 570846367}
+    - target: {fileID: 2278547420968928371, guid: 35ec6e3c92eae3a439f089055a188b2b, type: 3}
       propertyPath: stageButtons.Array.size
-      value: 5
+      value: 4
       objectReference: {fileID: 0}
     - target: {fileID: 2278547420968928371, guid: 35ec6e3c92eae3a439f089055a188b2b, type: 3}
       propertyPath: 'stageButtons.Array.data[0]'
@@ -565,7 +632,7 @@ PrefabInstance:
     - target: {fileID: 5168817692469430314, guid: 35ec6e3c92eae3a439f089055a188b2b, type: 3}
       propertyPath: stageSelectNavigation
       value: 
-      objectReference: {fileID: 0}
+      objectReference: {fileID: 1432900249}
     - target: {fileID: 5209062262087780275, guid: 35ec6e3c92eae3a439f089055a188b2b, type: 3}
       propertyPath: m_Pivot.x
       value: 0
@@ -646,11 +713,58 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    m_RemovedComponents: []
+    - target: {fileID: 5419536254789749557, guid: 35ec6e3c92eae3a439f089055a188b2b, type: 3}
+      propertyPath: m_AnchorMax.x
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 5419536254789749557, guid: 35ec6e3c92eae3a439f089055a188b2b, type: 3}
+      propertyPath: m_AnchorMax.y
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 5419536254789749557, guid: 35ec6e3c92eae3a439f089055a188b2b, type: 3}
+      propertyPath: m_AnchorMin.x
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 5419536254789749557, guid: 35ec6e3c92eae3a439f089055a188b2b, type: 3}
+      propertyPath: m_AnchorMin.y
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 5419536254789749557, guid: 35ec6e3c92eae3a439f089055a188b2b, type: 3}
+      propertyPath: m_SizeDelta.x
+      value: 100
+      objectReference: {fileID: 0}
+    - target: {fileID: 5419536254789749557, guid: 35ec6e3c92eae3a439f089055a188b2b, type: 3}
+      propertyPath: m_SizeDelta.y
+      value: 100
+      objectReference: {fileID: 0}
+    - target: {fileID: 7344960126991243498, guid: 35ec6e3c92eae3a439f089055a188b2b, type: 3}
+      propertyPath: m_CullTransparentMesh
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7515826132756658118, guid: 35ec6e3c92eae3a439f089055a188b2b, type: 3}
+      propertyPath: m_Sprite
+      value: 
+      objectReference: {fileID: 21300000, guid: 7b3209cd71046374d85e45e76fb88844, type: 3}
+    m_RemovedComponents:
+    - {fileID: 5168817692469430314, guid: 35ec6e3c92eae3a439f089055a188b2b, type: 3}
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 140588437054192255, guid: 35ec6e3c92eae3a439f089055a188b2b, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1003906006}
   m_SourcePrefab: {fileID: 100100000, guid: 35ec6e3c92eae3a439f089055a188b2b, type: 3}
+--- !u!114 &1432900249 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 2278547420968928371, guid: 35ec6e3c92eae3a439f089055a188b2b, type: 3}
+  m_PrefabInstance: {fileID: 1244823657}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7566a5fecdcb75640b55ebaea2f0649b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::StageSelectNavigation
 --- !u!114 &1777393342 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 252763332799366566, guid: 35ec6e3c92eae3a439f089055a188b2b, type: 3}

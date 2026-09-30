@@ -17,41 +17,51 @@ public class StageSelectButtons : MonoBehaviour
         {
             stageSelectNavigation = GetComponentInParent<StageSelectNavigation>();
         }
+
+        // ★追加
+        if (stageSelectNavigation != null)
+        {
+            Debug.Log($"[StageSelectButtons] 参照OK: {stageSelectNavigation.gameObject.name} (InstanceID: {stageSelectNavigation.GetInstanceID()})", this);
+        }
+        else
+        {
+            Debug.LogWarning("[StageSelectButtons] StageSelectNavigation が見つかりません。", this);
+        }
     }
 
     public void TOnStage1Click()
     {
         OnStageSelectedEvent?.Invoke(1);
         OnStageButtonClicked();
-        TDebugUnlockNext(1);
+        // ステージ1用の処理
     }
 
     public void TOnStage2Click()
     {
         OnStageSelectedEvent?.Invoke(2);
         OnStageButtonClicked();
-        TDebugUnlockNext(2);
+        // ステージ2用の処理
     }
 
     public void TOnStage3Click()
     {
         OnStageSelectedEvent?.Invoke(3);
         OnStageButtonClicked();
-        TDebugUnlockNext(3);
+        // ステージ3用の処理
     }
 
     public void TOnStage4Click()
     {
         OnStageSelectedEvent?.Invoke(4);
         OnStageButtonClicked();
-        TDebugUnlockNext(4);
+        // ステージ4用の処理
     }
 
     public void TOnTutorialClick()
     {
         OnStageSelectedEvent?.Invoke(0);
         OnStageButtonClicked();
-        TDebugUnlockNext(0);
+        // チュートリアル用の処理
     }
 
     private void OnStageButtonClicked()
@@ -65,17 +75,5 @@ public class StageSelectButtons : MonoBehaviour
 
         stageSelectNavigation.TShowClickImage(rect);
         stageSelectNavigation.THideSelectImage();
-    }
-
-    /// <summary>
-    /// 【動作確認用】クリックしたステージをクリア扱いにし、次のステージを解放する。
-    /// 本実装では、実際のクリア判定(ゴール到達など)が完成し次第この呼び出しは削除し、
-    /// クリア成立時のみ TSetStageCleared を呼ぶ形に置き換えてください。
-    /// </summary>
-    private void TDebugUnlockNext(int stageIndex)
-    {
-        if (stageSelectNavigation == null) return;
-
-        stageSelectNavigation.TSetStageCleared(stageIndex);
     }
 }
