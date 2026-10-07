@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
@@ -13,6 +14,10 @@ public class SInGameManagerBase : SGameManagerBase
     [SerializeField] private GameObject SLevelIntroPrefab;
     [SerializeField] private GameObject SGameOverPrefab;
     [SerializeField] private GameObject SStageClearPrefab;
+
+    [Header("Enemy Settings")]
+    [Tooltip("シーン上にあらかじめ配置された敵（EnemyBase派生）をセット")]
+    [SerializeField] private List<EnemyBase> m_targetEnemies = new();
 
     public bool IsPaused { get; private set; } = false;
 
@@ -42,7 +47,7 @@ public class SInGameManagerBase : SGameManagerBase
 
     private void OnPauseInput(InputAction.CallbackContext context)
     {
-        // ★【連打・不正操作防止】シーン遷移中やゲーム終了後はポーズ操作を受け付けない
+        // シーン遷移中やゲーム終了後はポーズ操作を受け付けない
         if (m_isLoading || m_isGameEnded) return;
 
         TogglePause();
@@ -58,7 +63,7 @@ public class SInGameManagerBase : SGameManagerBase
 
     public void SetPause(bool isPause)
     {
-        // ★【連打防止】シーン遷移中はポーズ操作を弾く
+        // シーン遷移中はポーズ操作を弾く
         if (m_isLoading) return;
 
         IsPaused = isPause;
@@ -96,6 +101,36 @@ public class SInGameManagerBase : SGameManagerBase
             }
         }
         SUIManager.SInstance.SPlayFadeIn(0.4f);
+
+        // 敵の死亡監視イベントを登録
+        SetupEnemyObservers();
+    }
+
+    private void SetupEnemyObservers()
+    {
+        foreach (var enemy in m_targetEnemies)
+        {
+            if (enemy == null) continue;
+
+            // EnemyBaseを書き換える代わりに、監視用コンポーネントを動的にアタッチする
+            var observer = enemy.gameObject.AddComponent<EnemyDeathObserver>();
+            observer.OnDestroyedAction += OnEnemyDied;
+        }
+    }
+
+    /// <summary>
+    /// 敵がDestroyされた瞬間だけ呼ばれる処理
+    /// </summary>
+    private void OnEnemyDied()
+    {
+        // 破棄された敵（null）をリストから除外
+        m_targetEnemies.RemoveAll(enemy => enemy == null);
+
+        // 全滅したらクリア（すでにクリア演出中なら弾く）
+        if (m_targetEnemies.Count == 0 && !m_isGameEnded)
+        {
+            OnGameClear();
+        }
     }
 
     // ==========================================
@@ -104,7 +139,7 @@ public class SInGameManagerBase : SGameManagerBase
 
     public virtual void OnGameClear()
     {
-        // ★【多重発火防止】既にゲーム終了済み、またはシーン遷移中なら何もしない
+        // 既にゲーム終了済み、またはシーン遷移中なら何もしない
         if (m_isGameEnded || m_isLoading) return;
         m_isGameEnded = true;
 
@@ -138,7 +173,7 @@ public class SInGameManagerBase : SGameManagerBase
 
     public virtual void OnGameOver()
     {
-        // ★【多重発火防止】既にゲーム終了済み、またはシーン遷移中なら何もしない
+        // 既にゲーム終了済み、またはシーン遷移中なら何もしない
         if (m_isGameEnded || m_isLoading) return;
         m_isGameEnded = true;
 
@@ -162,7 +197,6 @@ public class SInGameManagerBase : SGameManagerBase
 
     private void OnNextStage()
     {
-        // ★【連打防止】遷移中の連打（FadeOutの重ね掛け）をブロック
         if (m_isLoading) return;
 
         SetPause(false);
@@ -178,7 +212,6 @@ public class SInGameManagerBase : SGameManagerBase
 
     private void OnBackTitle()
     {
-        // ★【連打防止】遷移中の連打（FadeOutの重ね掛け）をブロック
         if (m_isLoading) return;
 
         SetPause(false);
@@ -192,7 +225,6 @@ public class SInGameManagerBase : SGameManagerBase
 
     private void OnRestart()
     {
-        // ★【連打防止】遷移中の連打（FadeOutの重ね掛け）をブロック
         if (m_isLoading) return;
 
         SetPause(false);
@@ -220,7 +252,6 @@ public class SInGameManagerBase : SGameManagerBase
 
     private void OnGUI()
     {
-        // ★【連打・誤操作防止】遷移中やゲーム終了後はデバッグボタンを操作不可（グレーアウト）に
         GUI.enabled = !m_isLoading && !m_isGameEnded;
 
         GUILayout.BeginArea(new Rect(20, 20, 200, 200));
@@ -254,5 +285,18 @@ public class SInGameManagerBase : SGameManagerBase
     public void ForceGameOver()
     {
         OnGameOver();
+    }
+
+    // ==========================================
+    // 敵の死亡（Destroy）を検知する内部ヘルパークラス
+    // ==========================================
+    private class EnemyDeathObserver : MonoBehaviour
+    {
+        public System.Action OnDestroyedAction;
+
+        private void OnDestroy()
+        {
+            OnDestroyedAction?.Invoke();
+        }
     }
 }
