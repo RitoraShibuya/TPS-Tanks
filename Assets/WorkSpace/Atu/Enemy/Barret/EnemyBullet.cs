@@ -3,7 +3,9 @@ using UnityEngine;
 [RequireComponent(typeof(Rigidbody))]
 public class EnemyBullet : MonoBehaviour
 {
-    private float damage;
+    // EnemyBaseからダメージ量を参照できるように public（getter）にする
+    public float Damage { get; private set; }
+
     private Rigidbody rb;
 
     private void Awake()
@@ -13,7 +15,7 @@ public class EnemyBullet : MonoBehaviour
 
     public void Launch(Vector3 direction, float speed, float attackPower, float lifeTime = 2f)
     {
-        damage = attackPower;
+        Damage = attackPower;
 
         rb.linearVelocity = direction.normalized * speed;
 
@@ -22,16 +24,12 @@ public class EnemyBullet : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        if (other.CompareTag("Enemy")) return;
+        // 自分自身（発射した本体など）との接触を無視したい場合は、Tagではなく必要に応じて調整
 
-        // if (other.TryGetComponent(out IDamageable target))
-        // {
-        //     target.TakeDamage(damage);
-        // }
+        Debug.Log($"{other.name} に命中！ ダメージ: {Damage}");
 
-        Debug.Log($"{other.name} �ɒ��e�I �_���[�W: {damage}");
-
-
+        // ※ EnemyBase 側で OnTriggerEnter(Collider other) による TakeDamage を行っている場合は、
+        //   弾側では Destroy だけ行えば EnemyBase 側でダメージ処理が実行されます。
         Destroy(gameObject);
     }
 }
