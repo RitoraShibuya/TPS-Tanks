@@ -7,6 +7,7 @@ public class TankMovement : MonoBehaviour
     [Header("入力設定 (Input System)")]
     public InputAction moveAction = new InputAction("Move");
     public InputAction aimAction = new InputAction("Aim");
+    public InputAction fireAction = new InputAction("Fire");
 
     [Header("入力設定Keyborad (Input System)")]
     private InputActionReference moveActionKeyboard;
@@ -35,6 +36,10 @@ public class TankMovement : MonoBehaviour
     [Header("エイム・砲身パーツ (同階層)")]
     public Transform udRotator;
     public Transform[] barrelParts;
+    public Transform firePosition;
+
+    [Header("発射する球")]
+    public GameObject Bullet;
 
     [Header("坂道判定")]
     public LayerMask groundLayer = -1;
@@ -46,7 +51,7 @@ public class TankMovement : MonoBehaviour
     private float currentPitch = 0f;
 
     [Header("値チェック")]
-    public  float Val1= 0;
+    public  Vector2 Val1= Vector2.zero;
 
 
     private void Awake()
@@ -64,18 +69,25 @@ public class TankMovement : MonoBehaviour
             .With("Down", "<Keyboard>/downArrow")
             .With("Left", "<Keyboard>/leftArrow")
             .With("Right", "<Keyboard>/rightArrow");
+
+        fireAction.AddBinding("<Gamepad>/leftShoulder");
+        fireAction.AddBinding("<Keyboard>/r");
     }
 
     private void OnEnable()
     {
         moveAction.Enable();
         aimAction.Enable();
+        fireAction.Enable();
+        fireAction.performed += OnFirePerformd;
     }
 
     private void OnDisable()
     {
         moveAction.Disable();
         aimAction.Disable();
+        fireAction.performed -= OnFirePerformd;
+        fireAction.Disable();
     }
 
     void Start()
@@ -109,7 +121,7 @@ public class TankMovement : MonoBehaviour
         // Rスティック処理 (エイム計算)
         // ============================================
         Vector2 rightInput = aimAction.ReadValue<Vector2>();
-
+        Val1 = rightInput;
         if (rightInput.magnitude >= deadZone)
         {
             // 左右：論理的な「向いている方向」を回転
@@ -117,9 +129,34 @@ public class TankMovement : MonoBehaviour
             currentTurretForward = yawRot * currentTurretForward;
 
             // 上下：ピッチ角度の更新
-            currentPitch -= rightInput.y * aimVerticalSpeed * Time.deltaTime;
-            currentPitch = Mathf.Clamp(currentPitch, minElevation, maxElevation);
+
+            //自動ピッチ角度更新
+            //currentPitch -= rightInput.y * aimVerticalSpeed * Time.deltaTime;
+            //currentPitch = Mathf.Clamp(currentPitch, minElevation, maxElevation);
+
+            // 各角度止まる
+            float radiusChange = 0.5f;
+
+            if (Mathf.Abs(rightInput.y) <= deadZone)
+            {
+                currentPitch = 0.0f;
+            }
+            else
+            {
+                float pitchInput = Mathf.Sign(rightInput.y) *
+                    (Mathf.Abs(rightInput.y) - deadZone) / (1.0f - deadZone);
+
+                if (pitchInput <= radiusChange)
+                {
+                    currentPitch = maxElevation * pitchInput;
+                }
+                else
+                {
+                    currentPitch = maxElevation * (radiusChange + (pitchInput - radiusChange) * 0.5f);
+                }
+            }
         }
+
         else
         {
             // ニュートラル時に水平へ戻る
@@ -158,7 +195,6 @@ public class TankMovement : MonoBehaviour
 
         //坂道に入ったら重力を無効化
         float dot = Vector3.Dot(hit.normal, Vector3.up);
-        Val1 = dot;
         if (dot > 0.99f || dot <= 0)
         {
             rb.useGravity = true;
@@ -266,4 +302,17 @@ public class TankMovement : MonoBehaviour
             mainCamera.position = tankTurret.position + camTargetRot * cameraOffset;
         }
     }
+
+    void OnFirePerformd(InputAction.CallbackContext context)
+    {
+        float spawnDistance = 1.0f;
+
+        Vector3 bulletPosition = firePosition.position + firePosition.forward * spawnDistance;
+
+        Instantiate(Bullet, bulletPosition, firePosition.rotation);
+
+        Debug.Log(firePosition.position);
+    }
+
+
 }
