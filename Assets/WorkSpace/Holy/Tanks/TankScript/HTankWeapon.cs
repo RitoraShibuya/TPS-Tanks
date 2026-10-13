@@ -176,7 +176,7 @@ public class TankWeapon : MonoBehaviour
         {
             // 照準(レティクル)と同じ距離(aimSystem.MaxAimDistance)を渡すことで、
             // 「照準の表示位置」と「弾が落下し始める距離」を常に一致させる
-            projectile.Launch(aimPoint, aimSystem.MaxAimDistance);
+            //projectile.Launch(aimPoint, aimSystem.MaxAimDistance);
         }
         else
         {

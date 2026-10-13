@@ -41,6 +41,13 @@ public class TankMovement : MonoBehaviour
     [Header("発射する球")]
     public GameObject Bullet;
 
+    [Header("弾の飛行設定")]
+    [SerializeField]
+    private float bulletFlightSpeed = 20f;
+
+    [SerializeField]
+    private float bulletStraightDistance = 30f;
+
     [Header("坂道判定")]
     public LayerMask groundLayer = -1;
     public float rayLength = 2.0f;
@@ -49,6 +56,37 @@ public class TankMovement : MonoBehaviour
     private Rigidbody rb;
     private Vector3 currentTurretForward;
     private float currentPitch = 0f;
+
+
+    [Header("着弾レティクル")]
+    [SerializeField]
+    private RectTransform landingReticle;
+
+    [SerializeField]
+    private Canvas reticleCanvas;
+
+
+    [Header("落下地点の予測")]
+    [SerializeField]
+    private float predictionMaxTime = 5f;
+
+    [SerializeField]
+    private float predictionStep = 0.05f;
+
+    [SerializeField]
+    private LayerMask predictionLayerMask = -1;
+
+    private Camera aimCamera;
+
+    // レイが当たったワールド座標
+    public Vector3 landingWorldPosition;
+
+    // 変換後のスクリーン座標
+    public Vector3 landingScreenPosition;
+
+    // 有効な着弾地点が見つかったか
+    public bool hasLandingPoint;
+
 
     [Header("値チェック")]
     public  Vector2 Val1= Vector2.zero;
@@ -93,6 +131,7 @@ public class TankMovement : MonoBehaviour
     void Start()
     {
         rb = GetComponent<Rigidbody>();
+        aimCamera = mainCamera.GetComponent<Camera>();
         rb.constraints = RigidbodyConstraints.FreezeRotation;
 
         if (mainCamera == null)
@@ -162,6 +201,7 @@ public class TankMovement : MonoBehaviour
             // ニュートラル時に水平へ戻る
             currentPitch = Mathf.Lerp(currentPitch, 0f, autoResetSpeed * Time.deltaTime);
         }
+        UpdateLandingPoint();
     }
 
     void FixedUpdate()
@@ -307,12 +347,153 @@ public class TankMovement : MonoBehaviour
     {
         float spawnDistance = 1.0f;
 
-        Vector3 bulletPosition = firePosition.position + firePosition.forward * spawnDistance;
+        Vector3 bulletPosition =
+            firePosition.position + firePosition.forward * spawnDistance;
 
-        Instantiate(Bullet, bulletPosition, firePosition.rotation);
+        GameObject bullet = Instantiate(
+            Bullet,
+            bulletPosition,
+            firePosition.rotation
+        );
 
-        Debug.Log(firePosition.position);
+        TankProjectile projectile = bullet.GetComponent<TankProjectile>();
+
+        if (projectile != null)
+        {
+            Vector3 aimPoint =
+                bulletPosition + firePosition.forward * 50f;
+
+            projectile.Launch(
+                aimPoint,
+                bulletStraightDistance,
+                bulletFlightSpeed
+            );
+        }
+        else
+        {
+            Debug.LogError("BulletにTankProjectileがありません！");
+        }
     }
 
+    private void UpdateLandingPoint()
+    {
+        hasLandingPoint = false;
 
+        // レティクルを一度非表示にする
+        if (landingReticle != null)
+        {
+            landingReticle.gameObject.SetActive(false);
+        }
+
+        // 必要な参照が設定されているか確認
+        if (firePosition == null || aimCamera == null)
+        {
+            return;
+        }
+
+        // 弾の初期位置と初速を取得
+        Vector3 startPosition =
+            firePosition.position + firePosition.forward;
+
+        Vector3 velocity =
+            firePosition.forward * bulletFlightSpeed;
+
+        if (bulletFlightSpeed <= 0f ||
+            predictionStep <= 0f ||
+            predictionMaxTime <= 0f)
+        {
+            return;
+        }
+
+        // 重力が有効になるまでの時間
+        float straightTime =
+            bulletStraightDistance / bulletFlightSpeed;
+
+        // 直線飛行が終了する位置
+        Vector3 straightEndPosition =
+            startPosition + velocity * straightTime;
+
+        Vector3 previousPosition = startPosition;
+
+        // 弾道を一定間隔で予測する
+        for (float time = predictionStep;
+             time <= predictionMaxTime;
+             time += predictionStep)
+        {
+            Vector3 currentPosition;
+
+            if (time <= straightTime)
+            {
+                // 直線飛行中
+                currentPosition =
+                    startPosition + velocity * time;
+            }
+            else
+            {
+                // 重力が有効になった後
+                float gravityTime = time - straightTime;
+
+                currentPosition =
+                    straightEndPosition
+                    + velocity * gravityTime
+                    + Physics.gravity
+                    * (0.5f * gravityTime * gravityTime);
+            }
+
+            // 前回の位置から今回の位置までレイを飛ばす
+            Vector3 segment =
+                currentPosition - previousPosition;
+
+            float segmentLength = segment.magnitude;
+
+            if (segmentLength > 0f)
+            {
+                RaycastHit[] hits = Physics.RaycastAll(
+                    previousPosition,
+                    segment.normalized,
+                    segmentLength,
+                    predictionLayerMask,
+                    QueryTriggerInteraction.Ignore
+                );
+
+                // 最も近い衝突地点から確認する
+                System.Array.Sort(
+                    hits,
+                    (a, b) => a.distance.CompareTo(b.distance)
+                );
+
+                foreach (RaycastHit hit in hits)
+                {
+                    // 自分の戦車には反応させない
+                    if (hit.transform == transform ||
+                        hit.transform.IsChildOf(transform))
+                    {
+                        continue;
+                    }
+
+                    // 最初に見つかった衝突地点を着弾地点とする
+                    landingWorldPosition = hit.point;
+
+                    // ワールド座標をスクリーン座標へ変換
+                    landingScreenPosition =
+                        aimCamera.WorldToScreenPoint(hit.point);
+
+                    // カメラの前にある地点だけを有効にする
+                    hasLandingPoint =
+                        landingScreenPosition.z > 0f;
+
+                    // レティクルを表示する
+                    if (landingReticle != null && hasLandingPoint)
+                    {
+                        landingReticle.gameObject.SetActive(true);
+                        landingReticle.position = landingScreenPosition;
+                    }
+
+                    return;
+                }
+            }
+
+            previousPosition = currentPosition;
+        }
+    }
 }

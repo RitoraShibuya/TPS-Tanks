@@ -1,130 +1,84 @@
 using UnityEngine;
 
-/// <summary>
-/// 弾(Projectile)の挙動を担当するスクリプト。
-///
-/// 仕様:
-/// - 発射された弾は、狙った方向へ直線で飛ぶ。
-/// - 「直線で飛ぶ距離」は、発射時にLaunch()の引数として外部(TankWeapon経由でTankAimSystem)
-///   から渡される。この距離を超えたら、水平方向の速度をゼロにし、重力の影響を受けて
-///   真下に落下を開始する。
-///   ※この距離をこのスクリプト自身のInspectorで個別に設定することはしない。
-///     照準(レティクル)の表示距離とズレる原因になるため、TankAimSystemの
-///     「Max Aim Distance」で一元管理する。
-/// - 直線飛行中・落下中を問わず、何かに衝突すればそこで着弾して消える。
-/// - 落下中は、弾を進行方向(速度ベクトル=真下)に向けて回転させる。
-///
-/// セットアップ:
-/// - 弾のPrefabにこのスクリプトと Rigidbody, Collider(IsTrigger推奨) をアタッチする。
-/// - TankWeapon からこのスクリプトの Launch() を呼び出して発射する。
-/// </summary>
 [RequireComponent(typeof(Rigidbody))]
 public class TankProjectile : MonoBehaviour
 {
     [Header("飛行設定")]
-    [Tooltip("直線飛行時の速度 (m/s)。仕様書の数値が確定するまでの暫定値。")]
     [SerializeField]
     private float flightSpeed = 20f;
 
-    [Tooltip("発射から何秒後に自動で消えるか(何にも当たらなかった場合の保険)")]
     [SerializeField]
     private float lifeTime = 10f;
 
-    [Header("エクセル連携")]
-    [Tooltip("CSV(Excel)からインポートした調整値を反映するためのTankTuningConfig。" +
-             "設定すると、起動時にこのアセットの値で上記のパラメーターが上書きされる。未設定ならこのInspectorの値をそのまま使用する。")]
-    [SerializeField]
-    private TankTuningConfig tuningConfig;
-
     private Rigidbody rb;
-
-    private bool isFalling;
     private Vector3 startPosition;
     private float straightFlightDistance;
+    private bool isFalling;
 
     private void Awake()
     {
-        ApplyTuningConfig();
-
         rb = GetComponent<Rigidbody>();
         rb.useGravity = false;
         rb.interpolation = RigidbodyInterpolation.Interpolate;
     }
 
-    /// <summary>
-    /// TankTuningConfig(CSV/Excelからインポートされた値)が設定されている場合、
-    /// そちらの値でこのスクリプトのパラメーターを上書きする。
-    /// </summary>
-    private void ApplyTuningConfig()
-    {
-        if (tuningConfig == null)
-        {
-            return;
-        }
-
-        flightSpeed = tuningConfig.projectile_FlightSpeed;
-        lifeTime = tuningConfig.projectile_LifeTime;
-    }
-
-    /// <summary>
-    /// 弾を発射する。
-    /// </summary>
-    /// <param name="aimPoint">狙点(ワールド座標)。飛んでいく方向の計算にのみ使用する。</param>
-    /// <param name="straightDistance">
-    /// 直線で飛ぶ距離(m)。この距離を超えると落下(重力)を開始する。
-    /// TankAimSystem.MaxAimDistance など、照準側と共有している値を渡すこと。
-    /// </param>
-    public void Launch(Vector3 aimPoint, float straightDistance)
+    public void Launch(
+     Vector3 aimPoint,
+     float straightDistance,
+     float speed)
     {
         startPosition = transform.position;
-        isFalling = false;
         straightFlightDistance = straightDistance;
+        flightSpeed = speed;
+        isFalling = false;
 
         Vector3 direction = (aimPoint - startPosition).normalized;
+
         if (direction.sqrMagnitude < 0.0001f)
         {
             direction = transform.forward;
         }
 
         transform.rotation = Quaternion.LookRotation(direction);
+        rb.useGravity = false;
         rb.linearVelocity = direction * flightSpeed;
 
         Destroy(gameObject, lifeTime);
     }
-
     private void FixedUpdate()
     {
         if (isFalling)
         {
-            // 落下中は、速度ベクトルの方向に弾を向ける(進行方向に回転)
             if (rb.linearVelocity.sqrMagnitude > 0.0001f)
             {
-                transform.rotation = Quaternion.LookRotation(rb.linearVelocity);
+                transform.rotation = Quaternion.LookRotation(
+                    rb.linearVelocity
+                );
             }
+
             return;
         }
 
-        // まだ直線飛行中。Launch()で渡された距離に到達したかどうかを判定する。
-        float traveledDistance = Vector3.Distance(startPosition, transform.position);
+        float traveledDistance = Vector3.Distance(
+            startPosition,
+            transform.position
+        );
+
         if (traveledDistance >= straightFlightDistance)
         {
-            // 直線飛行距離を超えた → 落下フェーズへ移行
-            // 水平方向を含む速度を一旦ゼロにし、重力のみで真下に落下させる
             isFalling = true;
-            rb.linearVelocity = Vector3.zero;
             rb.useGravity = true;
         }
     }
 
+
     private void OnCollisionEnter(Collision collision)
     {
-        // 何かに衝突したら着弾処理(見た目のエフェクトなどはここに追加する)
         Destroy(gameObject);
     }
 
     private void OnTriggerEnter(Collider other)
     {
-        // Colliderをトリガーにしている場合はこちらで着弾処理
         Destroy(gameObject);
     }
 }
