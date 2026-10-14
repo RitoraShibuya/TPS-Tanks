@@ -39,9 +39,9 @@ public class STitleGameManager : SGameManagerBase
 
         UpdateStageStatusList();
 
-        if (!SProgressManager.SInstance.IsStageCleared(0))
+        if (!SProgressManager.SInstance.IsStageCleared(1))
         {
-            LoadStage(0);
+            LoadStage(1);
         }
         else
         {
@@ -65,7 +65,7 @@ public class STitleGameManager : SGameManagerBase
     private void LoadStage(int stageID)
     {
         if (m_isLoading) return;
-        if (stageID < 0 || stageID > 4) return;
+        if (stageID < 1 || stageID > 4) return;
 
         // 未解放ステージは弾く
         if (!SProgressManager.SInstance.IsStageUnlocked(stageID))
