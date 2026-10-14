@@ -66,6 +66,11 @@ public class TankMovement : MonoBehaviour
     private Canvas reticleCanvas;
 
 
+    [Header("落下開始地点マーカー")]
+    [SerializeField]
+    private Transform fallPointMarker;
+
+
     [Header("落下地点の予測")]
     [SerializeField]
     private float predictionMaxTime = 5f;
@@ -374,73 +379,55 @@ public class TankMovement : MonoBehaviour
             Debug.LogError("BulletにTankProjectileがありません！");
         }
     }
-
     private void UpdateLandingPoint()
     {
         hasLandingPoint = false;
 
-        // レティクルを一度非表示にする
         if (landingReticle != null)
         {
             landingReticle.gameObject.SetActive(false);
         }
 
-        // 必要な参照が設定されているか確認
-        if (firePosition == null || aimCamera == null)
+        if (firePosition == null ||
+            aimCamera == null ||
+            bulletFlightSpeed <= 0f ||
+            bulletStraightDistance < 0f ||
+            predictionStep <= 0f)
         {
             return;
         }
 
-        // 弾の初期位置と初速を取得
+        // 弾の発射位置と初速
+        float spawnDistance = 1.0f;
+
         Vector3 startPosition =
-            firePosition.position + firePosition.forward;
+            firePosition.position
+            + firePosition.forward * spawnDistance;
 
         Vector3 velocity =
             firePosition.forward * bulletFlightSpeed;
 
-        if (bulletFlightSpeed <= 0f ||
-            predictionStep <= 0f ||
-            predictionMaxTime <= 0f)
-        {
-            return;
-        }
-
-        // 重力が有効になるまでの時間
+        // 直進終了までの時間と位置
         float straightTime =
             bulletStraightDistance / bulletFlightSpeed;
 
-        // 直線飛行が終了する位置
         Vector3 straightEndPosition =
             startPosition + velocity * straightTime;
 
+        // 直進中に壁や坂などへ衝突するか調べる
+        float elapsedTime = 0f;
         Vector3 previousPosition = startPosition;
 
-        // 弾道を一定間隔で予測する
-        for (float time = predictionStep;
-             time <= predictionMaxTime;
-             time += predictionStep)
+        while (elapsedTime < straightTime)
         {
-            Vector3 currentPosition;
+            float nextTime = Mathf.Min(
+                elapsedTime + predictionStep,
+                straightTime
+            );
 
-            if (time <= straightTime)
-            {
-                // 直線飛行中
-                currentPosition =
-                    startPosition + velocity * time;
-            }
-            else
-            {
-                // 重力が有効になった後
-                float gravityTime = time - straightTime;
+            Vector3 currentPosition =
+                startPosition + velocity * nextTime;
 
-                currentPosition =
-                    straightEndPosition
-                    + velocity * gravityTime
-                    + Physics.gravity
-                    * (0.5f * gravityTime * gravityTime);
-            }
-
-            // 前回の位置から今回の位置までレイを飛ばす
             Vector3 segment =
                 currentPosition - previousPosition;
 
@@ -456,7 +443,6 @@ public class TankMovement : MonoBehaviour
                     QueryTriggerInteraction.Ignore
                 );
 
-                // 最も近い衝突地点から確認する
                 System.Array.Sort(
                     hits,
                     (a, b) => a.distance.CompareTo(b.distance)
@@ -464,36 +450,41 @@ public class TankMovement : MonoBehaviour
 
                 foreach (RaycastHit hit in hits)
                 {
-                    // 自分の戦車には反応させない
+                    // 自分の戦車は無視
                     if (hit.transform == transform ||
                         hit.transform.IsChildOf(transform))
                     {
                         continue;
                     }
 
-                    // 最初に見つかった衝突地点を着弾地点とする
-                    landingWorldPosition = hit.point;
-
-                    // ワールド座標をスクリーン座標へ変換
-                    landingScreenPosition =
-                        aimCamera.WorldToScreenPoint(hit.point);
-
-                    // カメラの前にある地点だけを有効にする
-                    hasLandingPoint =
-                        landingScreenPosition.z > 0f;
-
-                    // レティクルを表示する
-                    if (landingReticle != null && hasLandingPoint)
-                    {
-                        landingReticle.gameObject.SetActive(true);
-                        landingReticle.position = landingScreenPosition;
-                    }
-
+                    // 衝突地点をレティクルに表示
+                    SetLandingReticle(hit.point);
                     return;
                 }
             }
 
             previousPosition = currentPosition;
+            elapsedTime = nextTime;
+        }
+
+        // 直進終了地点に障害物がない場合、
+        // 空中の落下開始地点をレティクルに表示
+        SetLandingReticle(straightEndPosition);
+    }
+
+    private void SetLandingReticle(Vector3 worldPosition)
+    {
+        landingWorldPosition = worldPosition;
+
+        landingScreenPosition =
+            aimCamera.WorldToScreenPoint(worldPosition);
+
+        hasLandingPoint = landingScreenPosition.z > 0f;
+
+        if (landingReticle != null && hasLandingPoint)
+        {
+            landingReticle.gameObject.SetActive(true);
+            landingReticle.position = landingScreenPosition;
         }
     }
 }
