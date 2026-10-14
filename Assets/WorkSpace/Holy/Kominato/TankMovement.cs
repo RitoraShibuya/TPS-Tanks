@@ -7,6 +7,7 @@ public class TankMovement : MonoBehaviour
     [Header("入力設定 (Input System)")]
     public InputAction moveAction = new InputAction("Move");
     public InputAction aimAction = new InputAction("Aim");
+    public InputAction fireAction = new InputAction("Fire");
 
     [Header("入力設定Keyborad (Input System)")]
     private InputActionReference moveActionKeyboard;
@@ -35,6 +36,17 @@ public class TankMovement : MonoBehaviour
     [Header("エイム・砲身パーツ (同階層)")]
     public Transform udRotator;
     public Transform[] barrelParts;
+    public Transform firePosition;
+
+    [Header("発射する球")]
+    public GameObject Bullet;
+
+    [Header("弾の飛行設定")]
+    [SerializeField]
+    private float bulletFlightSpeed = 20f;
+
+    [SerializeField]
+    private float bulletStraightDistance = 30f;
 
     [Header("坂道判定")]
     public LayerMask groundLayer = -1;
@@ -45,8 +57,44 @@ public class TankMovement : MonoBehaviour
     private Vector3 currentTurretForward;
     private float currentPitch = 0f;
 
+
+    [Header("着弾レティクル")]
+    [SerializeField]
+    private RectTransform landingReticle;
+
+    [SerializeField]
+    private Canvas reticleCanvas;
+
+
+    [Header("落下開始地点マーカー")]
+    [SerializeField]
+    private Transform fallPointMarker;
+
+
+    [Header("落下地点の予測")]
+    [SerializeField]
+    private float predictionMaxTime = 5f;
+
+    [SerializeField]
+    private float predictionStep = 0.05f;
+
+    [SerializeField]
+    private LayerMask predictionLayerMask = -1;
+
+    private Camera aimCamera;
+
+    // レイが当たったワールド座標
+    public Vector3 landingWorldPosition;
+
+    // 変換後のスクリーン座標
+    public Vector3 landingScreenPosition;
+
+    // 有効な着弾地点が見つかったか
+    public bool hasLandingPoint;
+
+
     [Header("値チェック")]
-    public  float Val1= 0;
+    public  Vector2 Val1= Vector2.zero;
 
 
     private void Awake()
@@ -64,23 +112,31 @@ public class TankMovement : MonoBehaviour
             .With("Down", "<Keyboard>/downArrow")
             .With("Left", "<Keyboard>/leftArrow")
             .With("Right", "<Keyboard>/rightArrow");
+
+        fireAction.AddBinding("<Gamepad>/leftShoulder");
+        fireAction.AddBinding("<Keyboard>/r");
     }
 
     private void OnEnable()
     {
         moveAction.Enable();
         aimAction.Enable();
+        fireAction.Enable();
+        fireAction.performed += OnFirePerformd;
     }
 
     private void OnDisable()
     {
         moveAction.Disable();
         aimAction.Disable();
+        fireAction.performed -= OnFirePerformd;
+        fireAction.Disable();
     }
 
     void Start()
     {
         rb = GetComponent<Rigidbody>();
+        aimCamera = mainCamera.GetComponent<Camera>();
         rb.constraints = RigidbodyConstraints.FreezeRotation;
 
         if (mainCamera == null)
@@ -109,7 +165,7 @@ public class TankMovement : MonoBehaviour
         // Rスティック処理 (エイム計算)
         // ============================================
         Vector2 rightInput = aimAction.ReadValue<Vector2>();
-
+        Val1 = rightInput;
         if (rightInput.magnitude >= deadZone)
         {
             // 左右：論理的な「向いている方向」を回転
@@ -117,14 +173,40 @@ public class TankMovement : MonoBehaviour
             currentTurretForward = yawRot * currentTurretForward;
 
             // 上下：ピッチ角度の更新
-            currentPitch -= rightInput.y * aimVerticalSpeed * Time.deltaTime;
-            currentPitch = Mathf.Clamp(currentPitch, minElevation, maxElevation);
+
+            //自動ピッチ角度更新
+            //currentPitch -= rightInput.y * aimVerticalSpeed * Time.deltaTime;
+            //currentPitch = Mathf.Clamp(currentPitch, minElevation, maxElevation);
+
+            // 各角度止まる
+            float radiusChange = 0.5f;
+
+            if (Mathf.Abs(rightInput.y) <= deadZone)
+            {
+                currentPitch = 0.0f;
+            }
+            else
+            {
+                float pitchInput = Mathf.Sign(rightInput.y) *
+                    (Mathf.Abs(rightInput.y) - deadZone) / (1.0f - deadZone);
+
+                if (pitchInput <= radiusChange)
+                {
+                    currentPitch = maxElevation * pitchInput;
+                }
+                else
+                {
+                    currentPitch = maxElevation * (radiusChange + (pitchInput - radiusChange) * 0.5f);
+                }
+            }
         }
+
         else
         {
             // ニュートラル時に水平へ戻る
             currentPitch = Mathf.Lerp(currentPitch, 0f, autoResetSpeed * Time.deltaTime);
         }
+        UpdateLandingPoint();
     }
 
     void FixedUpdate()
@@ -158,7 +240,6 @@ public class TankMovement : MonoBehaviour
 
         //坂道に入ったら重力を無効化
         float dot = Vector3.Dot(hit.normal, Vector3.up);
-        Val1 = dot;
         if (dot > 0.99f || dot <= 0)
         {
             rb.useGravity = true;
@@ -264,6 +345,146 @@ public class TankMovement : MonoBehaviour
 
             mainCamera.rotation = camTargetRot;
             mainCamera.position = tankTurret.position + camTargetRot * cameraOffset;
+        }
+    }
+
+    void OnFirePerformd(InputAction.CallbackContext context)
+    {
+        float spawnDistance = 1.0f;
+
+        Vector3 bulletPosition =
+            firePosition.position + firePosition.forward * spawnDistance;
+
+        GameObject bullet = Instantiate(
+            Bullet,
+            bulletPosition,
+            firePosition.rotation
+        );
+
+        TankProjectile projectile = bullet.GetComponent<TankProjectile>();
+
+        if (projectile != null)
+        {
+            Vector3 aimPoint =
+                bulletPosition + firePosition.forward * 50f;
+
+            projectile.Launch(
+                aimPoint,
+                bulletStraightDistance,
+                bulletFlightSpeed
+            );
+        }
+        else
+        {
+            Debug.LogError("BulletにTankProjectileがありません！");
+        }
+    }
+    private void UpdateLandingPoint()
+    {
+        hasLandingPoint = false;
+
+        if (landingReticle != null)
+        {
+            landingReticle.gameObject.SetActive(false);
+        }
+
+        if (firePosition == null ||
+            aimCamera == null ||
+            bulletFlightSpeed <= 0f ||
+            bulletStraightDistance < 0f ||
+            predictionStep <= 0f)
+        {
+            return;
+        }
+
+        // 弾の発射位置と初速
+        float spawnDistance = 1.0f;
+
+        Vector3 startPosition =
+            firePosition.position
+            + firePosition.forward * spawnDistance;
+
+        Vector3 velocity =
+            firePosition.forward * bulletFlightSpeed;
+
+        // 直進終了までの時間と位置
+        float straightTime =
+            bulletStraightDistance / bulletFlightSpeed;
+
+        Vector3 straightEndPosition =
+            startPosition + velocity * straightTime;
+
+        // 直進中に壁や坂などへ衝突するか調べる
+        float elapsedTime = 0f;
+        Vector3 previousPosition = startPosition;
+
+        while (elapsedTime < straightTime)
+        {
+            float nextTime = Mathf.Min(
+                elapsedTime + predictionStep,
+                straightTime
+            );
+
+            Vector3 currentPosition =
+                startPosition + velocity * nextTime;
+
+            Vector3 segment =
+                currentPosition - previousPosition;
+
+            float segmentLength = segment.magnitude;
+
+            if (segmentLength > 0f)
+            {
+                RaycastHit[] hits = Physics.RaycastAll(
+                    previousPosition,
+                    segment.normalized,
+                    segmentLength,
+                    predictionLayerMask,
+                    QueryTriggerInteraction.Ignore
+                );
+
+                System.Array.Sort(
+                    hits,
+                    (a, b) => a.distance.CompareTo(b.distance)
+                );
+
+                foreach (RaycastHit hit in hits)
+                {
+                    // 自分の戦車は無視
+                    if (hit.transform == transform ||
+                        hit.transform.IsChildOf(transform))
+                    {
+                        continue;
+                    }
+
+                    // 衝突地点をレティクルに表示
+                    SetLandingReticle(hit.point);
+                    return;
+                }
+            }
+
+            previousPosition = currentPosition;
+            elapsedTime = nextTime;
+        }
+
+        // 直進終了地点に障害物がない場合、
+        // 空中の落下開始地点をレティクルに表示
+        SetLandingReticle(straightEndPosition);
+    }
+
+    private void SetLandingReticle(Vector3 worldPosition)
+    {
+        landingWorldPosition = worldPosition;
+
+        landingScreenPosition =
+            aimCamera.WorldToScreenPoint(worldPosition);
+
+        hasLandingPoint = landingScreenPosition.z > 0f;
+
+        if (landingReticle != null && hasLandingPoint)
+        {
+            landingReticle.gameObject.SetActive(true);
+            landingReticle.position = landingScreenPosition;
         }
     }
 }
