@@ -8,18 +8,18 @@ public class EnemyTankController : EnemyBase
     [SerializeField] private EnemyTankData statsData;
 
     [Header("パーツ参照")]
-    [SerializeField] private Transform bodyTransform;          // 車体 (Body)
-    [SerializeField] private Transform turretTransform;        // 砲塔 (Turret)
-    [SerializeField] private Transform gunBarrelTransform;     // 砲身 (上下Turret)
-    [SerializeField] private Transform muzzleTransform;        // 砲口 (発射位置)
+    [SerializeField] private Transform bodyTransform;           // 車体 (Body)
+    [SerializeField] private Transform turretTransform;         // 砲塔 (Turret)
+    [SerializeField] private Transform gunBarrelTransform;      // 砲身 (上下Turret)
+    [SerializeField] private Transform muzzleTransform;         // 砲口 (発射位置)
 
     [Header("弾の発射設定")]
-    [SerializeField] private GameObject bulletPrefab;          // 弾のプレハブ
-    [SerializeField] private float bulletSpeed = 20f;         // 弾速
+    [SerializeField] private GameObject bulletPrefab;           // 弾のプレハブ
+    [SerializeField] private float bulletSpeed = 20f;           // 弾速
 
     [Header("モデルの正面軸補正設定")]
-    [Tooltip("モデルの見た目の正面がどのローカル軸を向いているか指定（標準はForward、横を向いているならRight）")]
-    [SerializeField] private ModelForwardAxis modelForwardAxis = ModelForwardAxis.Forward;
+    [Tooltip("モデルの見た目の正面がどのローカル軸を向いているか指定（標準はForward、逆向きならBack）")]
+    [SerializeField] private ModelForwardAxis modelForwardAxis = ModelForwardAxis.Back;
 
     [Header("AI・巡回設定")]
     [Tooltip("移動巡回する地点のリスト")]
@@ -54,7 +54,6 @@ public class EnemyTankController : EnemyBase
         // ターゲット視界判定 & 戦闘・追従制御
         if (target != null && IsTargetInSight())
         {
-            // ターゲットが視界に入っている場合：照準・攻撃
             HandleCombatAndTracking();
         }
         else
@@ -105,6 +104,24 @@ public class EnemyTankController : EnemyBase
     }
 
     /// <summary>
+    /// LookRotationに対してモデルの軸補正（Y軸回転）を適用する
+    /// </summary>
+    private Quaternion ApplyModelOffset(Quaternion baseRotation)
+    {
+        switch (modelForwardAxis)
+        {
+            case ModelForwardAxis.Right:
+                return baseRotation * Quaternion.Euler(0, -90, 0);
+            case ModelForwardAxis.Left:
+                return baseRotation * Quaternion.Euler(0, 90, 0);
+            case ModelForwardAxis.Back:
+                return baseRotation * Quaternion.Euler(0, 180, 0);
+            default:
+                return baseRotation;
+        }
+    }
+
+    /// <summary>
     /// ターゲットへ車体・砲塔・砲身を向け、射撃を行う
     /// </summary>
     private void HandleCombatAndTracking()
@@ -123,11 +140,7 @@ public class EnemyTankController : EnemyBase
         // --- 1. 車体（Body）をターゲットに向ける ---
         if (direction != Vector3.zero)
         {
-            Quaternion targetYawRotation = Quaternion.LookRotation(direction);
-            if (modelForwardAxis == ModelForwardAxis.Right)
-            {
-                targetYawRotation *= Quaternion.Euler(0, -90, 0);
-            }
+            Quaternion targetYawRotation = ApplyModelOffset(Quaternion.LookRotation(direction));
 
             body.rotation = Quaternion.RotateTowards(
                 body.rotation,
@@ -144,8 +157,7 @@ public class EnemyTankController : EnemyBase
 
             if (turretTargetDir != Vector3.zero)
             {
-                Quaternion targetTurretRot = Quaternion.LookRotation(turretTargetDir);
-                if (modelForwardAxis == ModelForwardAxis.Right) targetTurretRot *= Quaternion.Euler(0, -90, 0);
+                Quaternion targetTurretRot = ApplyModelOffset(Quaternion.LookRotation(turretTargetDir));
 
                 turretTransform.rotation = Quaternion.RotateTowards(
                     turretTransform.rotation,
@@ -159,7 +171,21 @@ public class EnemyTankController : EnemyBase
         if (gunBarrelTransform != null && turretTransform != null)
         {
             Vector3 localTargetPos = turretTransform.InverseTransformPoint(target.position);
-            float targetAngle = -Mathf.Atan2(localTargetPos.y, localTargetPos.z) * Mathf.Rad2Deg;
+
+            float targetAngle = 0f;
+            if (modelForwardAxis == ModelForwardAxis.Back)
+            {
+                targetAngle = -Mathf.Atan2(localTargetPos.y, -localTargetPos.z) * Mathf.Rad2Deg;
+            }
+            else if (modelForwardAxis == ModelForwardAxis.Left || modelForwardAxis == ModelForwardAxis.Right)
+            {
+                targetAngle = -Mathf.Atan2(localTargetPos.y, Mathf.Abs(localTargetPos.x)) * Mathf.Rad2Deg;
+            }
+            else
+            {
+                targetAngle = -Mathf.Atan2(localTargetPos.y, localTargetPos.z) * Mathf.Rad2Deg;
+            }
+
             targetAngle = Mathf.Clamp(targetAngle, minGunPitch, maxGunPitch);
 
             Quaternion targetBarrelRot = Quaternion.Euler(targetAngle, 0f, 0f);
@@ -188,14 +214,21 @@ public class EnemyTankController : EnemyBase
     {
         if (target == null) return false;
 
-        Transform checkTransform = turretTransform != null ? turretTransform : transform;
-        Vector3 direction = (target.position - checkTransform.position).normalized;
+        Transform checkTransform = muzzleTransform != null ? muzzleTransform :
+                                  (turretTransform != null ? turretTransform : transform);
 
-        // 砲塔の向きとターゲットへの方向の角度差で判定
+        Vector3 direction = (target.position - checkTransform.position);
+        direction.y = 0f;
+        direction.Normalize();
+
         Vector3 forward = GetModelForward(checkTransform);
+        forward.y = 0f;
+        forward.Normalize();
+
         float angle = Vector3.Angle(forward, direction);
 
-        return angle <= 10f; // 10度以内なら許可
+        // 砲塔がターゲットを20度以内に捉えていれば射撃を許可
+        return angle <= 20f;
     }
 
     /// <summary>
@@ -220,11 +253,7 @@ public class EnemyTankController : EnemyBase
         {
             if (direction != Vector3.zero)
             {
-                Quaternion targetYawRotation = Quaternion.LookRotation(direction);
-                if (modelForwardAxis == ModelForwardAxis.Right)
-                {
-                    targetYawRotation *= Quaternion.Euler(0, -90, 0);
-                }
+                Quaternion targetYawRotation = ApplyModelOffset(Quaternion.LookRotation(direction));
 
                 body.rotation = Quaternion.RotateTowards(
                     body.rotation,
@@ -258,11 +287,7 @@ public class EnemyTankController : EnemyBase
 
             if (nextDirection != Vector3.zero)
             {
-                Quaternion targetYawRotation = Quaternion.LookRotation(nextDirection);
-                if (modelForwardAxis == ModelForwardAxis.Right)
-                {
-                    targetYawRotation *= Quaternion.Euler(0, -90, 0);
-                }
+                Quaternion targetYawRotation = ApplyModelOffset(Quaternion.LookRotation(nextDirection));
 
                 body.rotation = Quaternion.RotateTowards(
                     body.rotation,
@@ -283,24 +308,11 @@ public class EnemyTankController : EnemyBase
     /// </summary>
     private void ExecuteShoot()
     {
-        if (muzzleTransform == null)
-        {
-            Debug.LogWarning("EnemyTankController: muzzleTransform が設定されていません。", this);
-            return;
-        }
+        if (muzzleTransform == null || bulletPrefab == null || target == null) return;
 
-        if (bulletPrefab == null)
-        {
-            Debug.LogWarning("EnemyTankController: bulletPrefab が設定されていません。", this);
-            return;
-        }
-
-        if (target == null) return;
-
-        // 砲口からターゲットへの方向ベクトルを正確に計算
+        // 砲口からターゲットへの方向ベクトルを計算
         Vector3 shootDirection = (target.position - muzzleTransform.position).normalized;
 
-        // 1. 砲口の位置・方向を計算して弾を生成
         Quaternion bulletRotation = Quaternion.LookRotation(shootDirection);
         GameObject bulletObj = Instantiate(
             bulletPrefab,
@@ -308,7 +320,6 @@ public class EnemyTankController : EnemyBase
             bulletRotation
         );
 
-        // 2. 計算した射撃方向（shootDirection）を直接渡して発射
         if (bulletObj.TryGetComponent(out EnemyBullet bullet))
         {
             bullet.Launch(

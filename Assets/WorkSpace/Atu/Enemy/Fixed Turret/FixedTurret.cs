@@ -31,6 +31,10 @@ public class FixedTurret : EnemyBase
     [Tooltip("砲口（モデルの正面）が向いているローカル軸を指定")]
     [SerializeField] private ModelForwardAxis modelForwardAxis = ModelForwardAxis.Left;
 
+    [Header("デバッグ機能")]
+    [Tooltip("このキーを押すと即死テストを実行（例: Kキー）")]
+    [SerializeField] private KeyCode debugKillKey = KeyCode.K;
+
     public enum ModelForwardAxis { Forward, Right, Left, Back }
 
     private float lastAttackTime = 0f;
@@ -43,6 +47,14 @@ public class FixedTurret : EnemyBase
 
     private void Update()
     {
+        // --- デバッグ用機能: 指定キーで即死 ---
+        if (Input.GetKeyDown(debugKillKey))
+        {
+            Debug.Log($"[Debug] {gameObject.name} に即死キー ({debugKillKey}) が入力されました。");
+            TakeDamage(currentHealth); // 現在のHP全額分のダメージを与えて死亡させる
+            return;
+        }
+
         // ターゲットが視界内に入っているかチェック
         if (target != null && IsTargetInSight())
         {
@@ -163,6 +175,16 @@ public class FixedTurret : EnemyBase
         {
             bullet.Launch(shootDirection, bulletSpeed, attackPower);
         }
+    }
+
+    /// <summary>
+    /// 死亡処理（親クラスのDieをオーバーライドして確実にオブジェクト削除）
+    /// </summary>
+    protected override void Die()
+    {
+        Debug.Log($"{gameObject.name} が破壊されました。");
+        base.Die();
+        Destroy(gameObject); // オブジェクトを消去
     }
 
     /// <summary>
