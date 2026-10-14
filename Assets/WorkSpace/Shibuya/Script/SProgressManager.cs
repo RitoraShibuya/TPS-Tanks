@@ -55,7 +55,7 @@ public class SProgressManager : MonoBehaviour
     /// </summary>
     public bool IsStageUnlocked(int id)
     {
-        if (id <= 0) return true; // チュートリアル(ID:0)は無条件で解放
+        if (id <= 1) return true; // チュートリアル(ID:0)は無条件で解放
         return IsStageCleared(id - 1); // 1つ前のステージがクリア済みなら解放
     }
 
