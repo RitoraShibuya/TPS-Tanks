@@ -1898,7 +1898,7 @@ GameObject:
   - component: {fileID: 5940709038645109978}
   m_Layer: 0
   m_Name: TS_PCTank_02
-  m_TagString: Untagged
+  m_TagString: Player
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
