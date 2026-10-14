@@ -1127,7 +1127,7 @@ MonoBehaviour:
   m_MinRegionArea: 2
   m_NavMeshData: {fileID: 23800000, guid: 7c5d37b462871c7439904135d88844a3, type: 2}
   m_BuildHeightMesh: 0
---- !u!1001 &1512543361
+--- !u!1001 &1608365709
 PrefabInstance:
   m_ObjectHideFlags: 0
   serializedVersion: 2
@@ -1141,15 +1141,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3805229765394557186, guid: 20b1df3f4c1647f40a30dcd797b63ea7, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -2.38644
+      value: 8.99935
       objectReference: {fileID: 0}
     - target: {fileID: 3805229765394557186, guid: 20b1df3f4c1647f40a30dcd797b63ea7, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0.76357
+      value: -4.56496
       objectReference: {fileID: 0}
     - target: {fileID: 3805229765394557186, guid: 20b1df3f4c1647f40a30dcd797b63ea7, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -18.2245
+      value: -2.19633
       objectReference: {fileID: 0}
     - target: {fileID: 3805229765394557186, guid: 20b1df3f4c1647f40a30dcd797b63ea7, type: 3}
       propertyPath: m_LocalRotation.w
@@ -1470,4 +1470,4 @@ SceneRoots:
   - {fileID: 34924356}
   - {fileID: 589326734}
   - {fileID: 961916484076425005}
-  - {fileID: 1512543361}
+  - {fileID: 1608365709}

@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -23,6 +24,10 @@ public class SInGameManagerBase : SGameManagerBase
 
     // ゲーム終了（クリアまたはオーバー）処理が既に走ったかのガードフラグ
     protected bool m_isGameEnded = false;
+
+    // プレイヤー制御用
+    private TankMovement m_playerTank;
+    private bool m_isStartLocked = false;
 
     // ==========================================
     // 入力イベントの登録・解除
@@ -71,7 +76,20 @@ public class SInGameManagerBase : SGameManagerBase
         // 1. 時間を操作する
         Time.timeScale = IsPaused ? 0f : 1f;
 
-        // 2. UIManagerに直接「UIを出せ/消せ」と命令する
+        // 2. ポーズ中のプレイヤー制御（ポーズ時は停止、解除時はロック中でなければ再開）
+        if (IsPaused)
+        {
+            SetPlayerControlEnabled(false);
+        }
+        else
+        {
+            if (!m_isStartLocked && !m_isGameEnded)
+            {
+                SetPlayerControlEnabled(true);
+            }
+        }
+
+        // 3. UIManagerに直接「UIを出せ/消せ」と命令する
         if (SUIManager.SInstance != null)
         {
             if (IsPaused)
@@ -90,6 +108,9 @@ public class SInGameManagerBase : SGameManagerBase
     // ==========================================
     protected virtual void Start()
     {
+        // シーン上の TankMovement を自動検索
+        m_playerTank = FindFirstObjectByType<TankMovement>();
+
         if (SLevelIntroPrefab != null)
         {
             GameObject introUI = SUIManager.SInstance.SShowUI(SLevelIntroPrefab);
@@ -104,6 +125,53 @@ public class SInGameManagerBase : SGameManagerBase
 
         // 敵の死亡監視イベントを登録
         SetupEnemyObservers();
+
+        // ゲーム開始時のカメラ初期化を待ってから1秒間の操作不能制御を開始
+        StartCoroutine(StartPlayerLockRoutine());
+    }
+
+    /// <summary>
+    /// ステージ開始から1秒間プレイヤーを操作不能にするコルーチン
+    /// </summary>
+    private IEnumerator StartPlayerLockRoutine()
+    {
+        m_isStartLocked = true;
+
+        // ★1フレーム待機することで TankMovement の Start() と最初の LateUpdate() (カメラ初期位置セット) を確実に実行させる
+        yield return null;
+
+        // カメラが正常位置についた後に操作をオフにする
+        SetPlayerControlEnabled(false);
+
+        // 残りのロック時間（1秒間）待機
+        yield return new WaitForSeconds(1.0f);
+
+        m_isStartLocked = false;
+
+        // 1秒経過後、ポーズ中・ゲーム終了後でなければ操作解除
+        if (!IsPaused && !m_isGameEnded)
+        {
+            SetPlayerControlEnabled(true);
+        }
+    }
+
+    /// <summary>
+    /// プレイヤー（TankMovement）の操作スクリプトおよび移動速度の有効/無効化
+    /// </summary>
+    private void SetPlayerControlEnabled(bool isEnabled)
+    {
+        if (m_playerTank == null) return;
+
+        m_playerTank.enabled = isEnabled;
+
+        if (!isEnabled)
+        {
+            if (m_playerTank.TryGetComponent<Rigidbody>(out var rb))
+            {
+                rb.linearVelocity = Vector3.zero;
+                rb.angularVelocity = Vector3.zero;
+            }
+        }
     }
 
     private void SetupEnemyObservers()
@@ -238,7 +306,8 @@ public class SInGameManagerBase : SGameManagerBase
 
     private void OnGameEnd()
     {
-        // 既存処理
+        // ゲーム終了時にプレイヤー操作を停止
+        SetPlayerControlEnabled(false);
     }
 
     public int GetStageID()

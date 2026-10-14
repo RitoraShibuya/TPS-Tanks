@@ -29,7 +29,7 @@ public class STitleGameManager : SGameManagerBase
     {
         if (SProgressManager.SInstance != null)
         {
-            m_stageStatusList = SProgressManager.SInstance.GetStageStatusList(5);
+            m_stageStatusList = SProgressManager.SInstance.GetStageStatusList(3);
         }
     }
 
@@ -76,7 +76,7 @@ public class STitleGameManager : SGameManagerBase
 
         SUIManager.SInstance.SPlayWipeOut(1.0f);
 
-        string sceneName = (stageID == 0) ? "TutorialScene" : $"Stage{stageID}Scene";
+        string sceneName =  $"Stage{stageID}Scene";
 
         LoadSceneWithDelay(sceneName, 1.0f);
     }
@@ -88,13 +88,14 @@ public class STitleGameManager : SGameManagerBase
         GUILayout.BeginArea(new Rect(10, 10, 200, 280));
         GUILayout.Label("<b>[ Debug Stage Load ]</b>");
 
-        for (int i = 0; i <= 4; i++)
+        for (int i = 1; i <= 3; i++)
         {
             bool isUnlocked = SProgressManager.SInstance.IsStageUnlocked(i);
             bool isCleared = SProgressManager.SInstance.IsStageCleared(i);
 
             string status = isCleared ? "[Cleared]" : (isUnlocked ? "[Unlocked]" : "[Locked]");
-            string label = (i == 0) ? $"0: Tutorial {status}" : $"Stage {i} {status}";
+            //string label = (i == 0) ? $"0: Tutorial {status}" : $"Stage {i} {status}";
+            string label = $"Stage {i} {status}";
 
             GUI.enabled = isUnlocked && !m_isLoading;
 
