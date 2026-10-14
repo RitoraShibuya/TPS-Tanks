@@ -13,26 +13,21 @@ public class SPressurePlateButton : MonoBehaviour
         Pressed     // 押し込み完了（壁消去済み・非表示・判定オフ）
     }
 
-    [Header("現在の状態")]
-    [Tooltip("インスペクター上で現在のステータスを確認できます")]
-    [SerializeField] private ButtonState m_currentState = ButtonState.Hidden;
-
     [Header("1. 出現条件設定")]
     [Tooltip("このボタンを出現させるために倒す必要がある敵のリスト（全て倒すとボタン出現）")]
     [SerializeField] private List<EnemyBase> m_targetEnemies = new();
 
-    [Tooltip("ボタンの見た目・判定オブジェクト（指定しない場合はこのオブジェクト自身の描画/コライダーを制御）")]
-    [SerializeField] private GameObject m_buttonVisual;
-
-    [Header("2. 感圧（踏む）設定")]
-    [Tooltip("ボタンを踏むことができる対象アクター（プレイヤー等）をインスペクターで指定")]
-    [SerializeField] private GameObject m_targetActor;
-
-    [Header("3. 消去対象設定")]
+    [Header("2. 消去対象設定")]
     [Tooltip("ボタンが押された時に消去（Destroy）する壁オブジェクトの配列")]
     [SerializeField] private GameObject[] m_targetWalls;
 
     public ButtonState CurrentState => m_currentState;
+
+    // 内部状態で管理（インスペクター非表示）
+    private ButtonState m_currentState = ButtonState.Hidden;
+
+    // 内部で自動取得するプレイヤー（TankMovement）オブジェクト
+    private GameObject m_targetActor;
 
     private Collider m_myCollider;
     private Renderer[] m_myRenderers;
@@ -45,8 +40,27 @@ public class SPressurePlateButton : MonoBehaviour
 
     private void Start()
     {
+        // シーン内の TankMovement (プレイヤー) を自動検索
+        FindPlayerActor();
+
         SetState(ButtonState.Hidden);
         SetupEnemyObservers();
+    }
+
+    /// <summary>
+    /// シーン上から TankMovement コンポーネントを持つプレイヤーを検索
+    /// </summary>
+    private void FindPlayerActor()
+    {
+        var playerTank = FindFirstObjectByType<TankMovement>();
+        if (playerTank != null)
+        {
+            m_targetActor = playerTank.gameObject;
+        }
+        else
+        {
+            Debug.LogWarning("[SPressurePlateButton] シーン内に TankMovement (プレイヤー) が見つかりませんでした。");
+        }
     }
 
     /// <summary>
@@ -79,22 +93,15 @@ public class SPressurePlateButton : MonoBehaviour
     }
 
     /// <summary>
-    /// ボタンの可視/不可視の切り替え
+    /// ボタンの可視/不可視の切り替え（自身および子オブジェクトの全Rendererを制御）
     /// </summary>
     private void SetVisibility(bool isVisible)
     {
-        if (m_buttonVisual != null)
+        if (m_myRenderers != null)
         {
-            m_buttonVisual.SetActive(isVisible);
-        }
-        else
-        {
-            if (m_myRenderers != null)
+            foreach (var r in m_myRenderers)
             {
-                foreach (var r in m_myRenderers)
-                {
-                    if (r != null) r.enabled = isVisible;
-                }
+                if (r != null) r.enabled = isVisible;
             }
         }
     }
@@ -198,19 +205,18 @@ public class SPressurePlateButton : MonoBehaviour
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
     private void OnGUI()
     {
-        // 画面右側にデバッグパネルを配置（他マネージャーのGUIと重ならないように設定）
         float areaWidth = 220f;
-        float areaHeight = 160f;
+        float areaHeight = 140f;
         Rect areaRect = new Rect(Screen.width - areaWidth - 10f, 10f, areaWidth, areaHeight);
 
         GUILayout.BeginArea(areaRect, GUI.skin.box);
         GUILayout.Label($"<b>[ Button Debug ]</b>");
-        GUILayout.Label($"State: <color=yellow>{m_currentState}</color>");
+        GUILayout.Label($"Actor Found: {(m_targetActor != null ? "<color=green>Yes</color>" : "<color=red>No</color>")}");
         GUILayout.Space(5);
 
         // 1. 敵死亡（全滅）の疑似発火ボタン
         GUI.enabled = (m_currentState == ButtonState.Hidden);
-        if (GUILayout.Button("【DEBUG】Kill All Enemies", GUILayout.Height(35)))
+        if (GUILayout.Button("【DEBUG】Kill All Enemies", GUILayout.Height(30)))
         {
             ForceKillEnemies();
         }
@@ -219,7 +225,7 @@ public class SPressurePlateButton : MonoBehaviour
 
         // 2. ボタン押下（壁消去）の疑似発火ボタン
         GUI.enabled = (m_currentState == ButtonState.Appeared);
-        if (GUILayout.Button("【DEBUG】Press Button", GUILayout.Height(35)))
+        if (GUILayout.Button("【DEBUG】Press Button", GUILayout.Height(30)))
         {
             ForcePressButton();
         }
