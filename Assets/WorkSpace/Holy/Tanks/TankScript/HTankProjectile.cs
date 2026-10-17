@@ -21,6 +21,7 @@ public class TankProjectile : MonoBehaviour
 
     private bool isFalling;
 
+
     private void Awake()
     {
         rb = GetComponent<Rigidbody>();
@@ -38,6 +39,7 @@ public class TankProjectile : MonoBehaviour
             );
         }
     }
+
 
     public void Launch(
         Vector3 aimPoint,
@@ -94,7 +96,6 @@ public class TankProjectile : MonoBehaviour
 
         if (isFalling)
         {
-            // Unity標準の重力に追加して、指定倍率の重力を適用
             rb.AddForce(
                 Physics.gravity * (gravityMultiplier - 1f),
                 ForceMode.Acceleration
