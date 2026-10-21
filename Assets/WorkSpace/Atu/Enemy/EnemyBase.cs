@@ -1,3 +1,4 @@
+using Tanks.Complete;
 using UnityEngine;
 
 public abstract class EnemyBase : MonoBehaviour
@@ -17,6 +18,9 @@ public abstract class EnemyBase : MonoBehaviour
     [SerializeField] protected Transform target;
     [SerializeField] protected string playerTag = "Player";
 
+
+    //[SerializeField] private HHelth health;
+
     public float CurrentHp => statsData.currentHp;
     public float MaxHp => statsData.maxHp;
 
@@ -33,7 +37,29 @@ public abstract class EnemyBase : MonoBehaviour
                 target = playerObj.transform;
             }
         }
+
+        //if(TankHealth == null)
+        //{
+        //    TankHealth = GetComponent<HHelth>();
+        //}
     }
+
+    //private void OnEnable()
+    //{
+    //    if(TankHealth != null)
+    //    {
+    //        TankHealth.OnDie += Die();
+    //    }
+    //}
+
+    //private void OnDisable()
+    //{
+    //    if (TankHealth != null)
+    //    {
+    //        TankHealth.OnDie -= Die;
+    //    }
+    //}
+
 
     /// <summary>
     /// ”íƒ_ƒ[ƒWˆ—
@@ -46,7 +72,7 @@ public abstract class EnemyBase : MonoBehaviour
         if (statsData.currentHp <= 0)
         {
             Die();
-        }
+                    }
     }
 
     /// <summary>
