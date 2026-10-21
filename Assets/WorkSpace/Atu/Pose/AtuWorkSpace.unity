@@ -470,6 +470,11 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 50, y: -30, z: 0}
+--- !u!4 &276045724 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 9143271877544933638, guid: 52c7574b344aa804a9fd552623c8a2c4, type: 3}
+  m_PrefabInstance: {fileID: 5508378673613795649}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &354923908
 GameObject:
   m_ObjectHideFlags: 0
@@ -598,7 +603,7 @@ PrefabInstance:
     - target: {fileID: 2251659454254996069, guid: e990c09e5709a0c4792300e45e0a87e7, type: 3}
       propertyPath: target
       value: 
-      objectReference: {fileID: 0}
+      objectReference: {fileID: 1942046046}
     - target: {fileID: 2251659454254996069, guid: e990c09e5709a0c4792300e45e0a87e7, type: 3}
       propertyPath: statsData
       value: 
@@ -707,6 +712,11 @@ PrefabInstance:
 --- !u!4 &787648820 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8708639282089872736, guid: eaa1b12a040b18c45a6ceb5d9e063a24, type: 3}
+  m_PrefabInstance: {fileID: 966455032}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &821394292 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 3652011956315678642, guid: eaa1b12a040b18c45a6ceb5d9e063a24, type: 3}
   m_PrefabInstance: {fileID: 966455032}
   m_PrefabAsset: {fileID: 0}
 --- !u!1 &902177007
@@ -968,7 +978,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: eaa1b12a040b18c45a6ceb5d9e063a24, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 808.3
+      value: 836.8
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: eaa1b12a040b18c45a6ceb5d9e063a24, type: 3}
       propertyPath: m_LocalPosition.y
@@ -976,7 +986,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: eaa1b12a040b18c45a6ceb5d9e063a24, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -388.61
+      value: -388.1
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: eaa1b12a040b18c45a6ceb5d9e063a24, type: 3}
       propertyPath: m_LocalRotation.w
@@ -1046,15 +1056,20 @@ MonoBehaviour:
     attackPower: 10
   target: {fileID: 1942046046}
   playerTag: Player
-  turretBody: {fileID: 0}
-  barrel: {fileID: 0}
+  turretTransform: {fileID: 1947530476}
+  barrelTransform: {fileID: 821394292}
   muzzleTransform: {fileID: 787648820}
   modelForwardAxis: 2
+  turretRotationSpeed: 90
+  pitchRotationSpeed: 60
+  minGunPitch: -10
+  maxGunPitch: 30
+  sightDistance: 20
+  sightAngle: 120
   bulletPrefab: {fileID: 5352246522190293954, guid: af2fd112e767eab48a683e0750de5c9b, type: 3}
   bulletSpeed: 100
-  fireRate: 1.5
   attackRange: 25
-  maxPitchAngle: 30
+  fireRate: 1.5
   obstacleLayer:
     serializedVersion: 2
     m_Bits: 0
@@ -1432,6 +1447,10 @@ PrefabInstance:
       propertyPath: bulletSpeed
       value: 30
       objectReference: {fileID: 0}
+    - target: {fileID: 7519508885684532597, guid: 52c7574b344aa804a9fd552623c8a2c4, type: 3}
+      propertyPath: barrelTransform
+      value: 
+      objectReference: {fileID: 276045724}
     - target: {fileID: 7519508885684532597, guid: 52c7574b344aa804a9fd552623c8a2c4, type: 3}
       propertyPath: 'waypoints.Array.data[0]'
       value: 
