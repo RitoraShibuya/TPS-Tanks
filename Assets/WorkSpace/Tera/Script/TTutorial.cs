@@ -3,7 +3,7 @@ using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 [RequireComponent(typeof(Selectable))]
-public class TutorialUpNavigation : MonoBehaviour, IMoveHandler
+public class TTutorialUpNavigation : MonoBehaviour, IMoveHandler
 {
     [Tooltip("未設定の場合、親階層から自動検索します(同一プレハブ内にある想定)")]
     [SerializeField] private StageSelectNavigation stageSelectNavigation;
