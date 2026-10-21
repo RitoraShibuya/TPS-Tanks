@@ -176,6 +176,63 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: f85c487cd724a5744a9c2909a87d6f74, type: 3}
+--- !u!1001 &117890389
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 1861210109798556834, guid: 1c0f955315ec53d4d8bcd56f7a195edd, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -3.6849
+      objectReference: {fileID: 0}
+    - target: {fileID: 1861210109798556834, guid: 1c0f955315ec53d4d8bcd56f7a195edd, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.00001
+      objectReference: {fileID: 0}
+    - target: {fileID: 1861210109798556834, guid: 1c0f955315ec53d4d8bcd56f7a195edd, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -13.02956
+      objectReference: {fileID: 0}
+    - target: {fileID: 1861210109798556834, guid: 1c0f955315ec53d4d8bcd56f7a195edd, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1861210109798556834, guid: 1c0f955315ec53d4d8bcd56f7a195edd, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1861210109798556834, guid: 1c0f955315ec53d4d8bcd56f7a195edd, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1861210109798556834, guid: 1c0f955315ec53d4d8bcd56f7a195edd, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1861210109798556834, guid: 1c0f955315ec53d4d8bcd56f7a195edd, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1861210109798556834, guid: 1c0f955315ec53d4d8bcd56f7a195edd, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1861210109798556834, guid: 1c0f955315ec53d4d8bcd56f7a195edd, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8597087697082419717, guid: 1c0f955315ec53d4d8bcd56f7a195edd, type: 3}
+      propertyPath: m_Name
+      value: SSoundManager
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 1c0f955315ec53d4d8bcd56f7a195edd, type: 3}
 --- !u!1 &163694327
 GameObject:
   m_ObjectHideFlags: 0
@@ -305,6 +362,7 @@ MonoBehaviour:
   predictionLayerMask:
     serializedVersion: 2
     m_Bits: 4294967295
+  health: {fileID: 0}
   fireCooldown: 0.3
   landingWorldPosition: {x: 0, y: 0, z: 0}
   landingScreenPosition: {x: 0, y: 0, z: 0}
@@ -452,25 +510,29 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2c05b467bb613154f8cd0018a46d0c46, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FixedTurret
+  statsData:
+    maxHp: 100
+    currentHp: 100
+    attackPower: 10
   target: {fileID: 229427569}
-  currentHealth: 0
-  targetObjectName: Turret
-  maxHp: 80
-  sightDistance: 20
-  sightAngle: 120
+  playerTag: Player
+  turretTransform: {fileID: 438838724}
+  barrelTransform: {fileID: 0}
+  muzzleTransform: {fileID: 989085292}
+  modelForwardAxis: 2
   turretRotationSpeed: 90
   pitchRotationSpeed: 60
-  attackCooldown: 1.5
-  attackPower: 15
-  turretTransform: {fileID: 438838724}
-  gunBarrelTransform: {fileID: 1998366438}
-  muzzleTransform: {fileID: 989085292}
-  bulletPrefab: {fileID: 5352246522190293954, guid: af2fd112e767eab48a683e0750de5c9b, type: 3}
-  bulletSpeed: 20
   minGunPitch: -10
   maxGunPitch: 30
-  modelForwardAxis: 2
-  debugKillKey: 107
+  sightDistance: 20
+  sightAngle: 120
+  bulletPrefab: {fileID: 5352246522190293954, guid: af2fd112e767eab48a683e0750de5c9b, type: 3}
+  bulletSpeed: 20
+  attackRange: 20
+  fireRate: 1.5
+  obstacleLayer:
+    serializedVersion: 2
+    m_Bits: 4294967295
 --- !u!4 &438838724 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: eaa1b12a040b18c45a6ceb5d9e063a24, type: 3}
@@ -2550,11 +2612,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 50, y: -30, z: 0}
---- !u!4 &1998366438 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 3652011956315678642, guid: eaa1b12a040b18c45a6ceb5d9e063a24, type: 3}
-  m_PrefabInstance: {fileID: 1172087816}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &2014579950
 GameObject:
   m_ObjectHideFlags: 0
@@ -2967,3 +3024,4 @@ SceneRoots:
   - {fileID: 423693402}
   - {fileID: 2054613610}
   - {fileID: 1172087816}
+  - {fileID: 117890389}

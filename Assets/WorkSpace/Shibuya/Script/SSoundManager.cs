@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections.Generic;
 
 public class SSoundManager : MonoBehaviour
 {
@@ -19,12 +20,10 @@ public class SSoundManager : MonoBehaviour
     [SerializeField] private AudioClip bgmStageClear;
     [SerializeField] private AudioClip bgmGameOver;
 
-    [Header("SE Clips")]
+    [Header("SE Clips (単発)")]
     [SerializeField] private AudioClip seShoot;           // 発射
     [SerializeField] private AudioClip seImpact;          // 着弾
     [SerializeField] private AudioClip seTankDestroy;     // 戦車破壊
-    [SerializeField] private AudioClip seTurretRotate;    // 砲塔旋回
-    [SerializeField] private AudioClip seTankMoveEngine;  // 戦車移動（エンジン）
     [SerializeField] private AudioClip seCollision;       // 衝突
     [SerializeField] private AudioClip seDecide;          // 決定音
     [SerializeField] private AudioClip seCursor;          // カーソル音
@@ -34,9 +33,16 @@ public class SSoundManager : MonoBehaviour
     [SerializeField] private AudioClip seSwitchPressed;   // スイッチが押される音
     [SerializeField] private AudioClip seSwitchAppear;    // スイッチが現れる音
 
+    [Header("SE Clips (ループ系)")]
+    [SerializeField] private AudioClip seTurretRotate;    // 砲塔旋回
+    [SerializeField] private AudioClip seTankMoveEngine;  // 戦車移動（エンジン）
+
     // 音声再生用のコンポーネント
     private AudioSource bgmSource;
     private AudioSource seSource;
+
+    // ループSEを管理するための辞書
+    private Dictionary<AudioClip, AudioSource> loopSESources = new Dictionary<AudioClip, AudioSource>();
 
     private void Awake()
     {
@@ -64,6 +70,14 @@ public class SSoundManager : MonoBehaviour
         {
             bgmSource.volume = bgmVolume;
         }
+
+        foreach (var source in loopSESources.Values)
+        {
+            if (source != null)
+            {
+                source.volume = seVolume;
+            }
+        }
     }
 
     // 4. BGMを引数にする関数
@@ -81,11 +95,57 @@ public class SSoundManager : MonoBehaviour
         bgmSource.Play();
     }
 
-    // 5. SEを引数にする関数
+    // ★追加: BGMを停止する関数
+    public void StopBGM()
+    {
+        if (bgmSource != null && bgmSource.isPlaying)
+        {
+            bgmSource.Stop();
+        }
+    }
+
+    // 5. 単発SEを引数にする関数
     public void PlaySE(AudioClip seClip)
     {
         if (seClip == null) return;
         seSource.PlayOneShot(seClip, seVolume);
+    }
+
+    // --- ループSE用の基本関数 ---
+    private void PlayLoopSE(AudioClip seClip)
+    {
+        if (seClip == null) return;
+
+        if (!loopSESources.ContainsKey(seClip))
+        {
+            AudioSource newSource = gameObject.AddComponent<AudioSource>();
+            newSource.clip = seClip;
+            newSource.loop = true;
+            newSource.playOnAwake = false;
+            loopSESources.Add(seClip, newSource);
+        }
+
+        AudioSource targetSource = loopSESources[seClip];
+        targetSource.volume = seVolume;
+
+        if (!targetSource.isPlaying)
+        {
+            targetSource.Play();
+        }
+    }
+
+    private void StopLoopSE(AudioClip seClip)
+    {
+        if (seClip == null) return;
+
+        if (loopSESources.ContainsKey(seClip))
+        {
+            AudioSource targetSource = loopSESources[seClip];
+            if (targetSource.isPlaying)
+            {
+                targetSource.Stop();
+            }
+        }
     }
 
     // ==========================================
@@ -97,13 +157,11 @@ public class SSoundManager : MonoBehaviour
     public void PlayBGM_GameOver() => PlayBGM(bgmGameOver);
 
     // ==========================================
-    // 6. 各SE再生用関数
+    // 6. 各SE再生用関数（単発）
     // ==========================================
     public void PlaySE_Shoot() => PlaySE(seShoot);
     public void PlaySE_Impact() => PlaySE(seImpact);
     public void PlaySE_TankDestroy() => PlaySE(seTankDestroy);
-    public void PlaySE_TurretRotate() => PlaySE(seTurretRotate);
-    public void PlaySE_TankMoveEngine() => PlaySE(seTankMoveEngine);
     public void PlaySE_Collision() => PlaySE(seCollision);
     public void PlaySE_Decide() => PlaySE(seDecide);
     public void PlaySE_Cursor() => PlaySE(seCursor);
@@ -112,4 +170,13 @@ public class SSoundManager : MonoBehaviour
     public void PlaySE_WallVanish() => PlaySE(seWallVanish);
     public void PlaySE_SwitchPressed() => PlaySE(seSwitchPressed);
     public void PlaySE_SwitchAppear() => PlaySE(seSwitchAppear);
+
+    // ==========================================
+    // 6. 各SE再生用関数（ループ系 Start / End）
+    // ==========================================
+    public void PlaySE_TurretRotate_Start() => PlayLoopSE(seTurretRotate);
+    public void PlaySE_TurretRotate_End() => StopLoopSE(seTurretRotate);
+
+    public void PlaySE_TankMoveEngine_Start() => PlayLoopSE(seTankMoveEngine);
+    public void PlaySE_TankMoveEngine_End() => StopLoopSE(seTankMoveEngine);
 }

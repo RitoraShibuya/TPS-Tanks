@@ -46,20 +46,20 @@ MonoBehaviour:
   m_EditorClassIdentifier: '::'
   bgmVolume: 1
   seVolume: 1
-  bgmInGame: {fileID: 0}
-  bgmMenu: {fileID: 0}
+  bgmInGame: {fileID: 8300000, guid: 3a93f0ec0963de2409d17a9106fb872d, type: 3}
+  bgmMenu: {fileID: 8300000, guid: 692b258297152d24992f3530cedc4a71, type: 3}
   bgmStageClear: {fileID: 0}
   bgmGameOver: {fileID: 0}
-  seShoot: {fileID: 0}
-  seImpact: {fileID: 0}
-  seTankDestroy: {fileID: 0}
-  seTurretRotate: {fileID: 0}
-  seTankMoveEngine: {fileID: 0}
-  seCollision: {fileID: 0}
-  seDecide: {fileID: 0}
-  seCursor: {fileID: 0}
-  seStageClear: {fileID: 0}
-  seGameOver: {fileID: 0}
-  seWallVanish: {fileID: 0}
-  seSwitchPressed: {fileID: 0}
-  seSwitchAppear: {fileID: 0}
+  seShoot: {fileID: 8300000, guid: 0db9a7b747fae234eaefc362213c1fdc, type: 3}
+  seImpact: {fileID: 8300000, guid: cfbffd510a53a7c4ab58053ff77c433c, type: 3}
+  seTankDestroy: {fileID: 8300000, guid: 02df051de78c78e43ba96566024019a1, type: 3}
+  seTurretRotate: {fileID: 8300000, guid: b92cbb7db270e8b4eb92c54810182572, type: 3}
+  seTankMoveEngine: {fileID: 8300000, guid: 8467954d747e86e41acb4f6ef644da1c, type: 3}
+  seCollision: {fileID: 8300000, guid: 68bd115111d25fb4491154a5b6a1bbc8, type: 3}
+  seDecide: {fileID: 8300000, guid: b1d8d5f4a6e09814fae018bb7efcb88b, type: 3}
+  seCursor: {fileID: 8300000, guid: 3cc0243ea14048e40baf2432e58855d8, type: 3}
+  seStageClear: {fileID: 8300000, guid: 59f9dbda4bdf0de49b26ff8b21bd57f9, type: 3}
+  seGameOver: {fileID: 8300000, guid: 382577e0da310584d8649bed985e0685, type: 3}
+  seWallVanish: {fileID: 8300000, guid: b20f64497bad97b41876c145ab5458aa, type: 3}
+  seSwitchPressed: {fileID: 8300000, guid: b1d8d5f4a6e09814fae018bb7efcb88b, type: 3}
+  seSwitchAppear: {fileID: 8300000, guid: 66c3f678065e21e4f893e31ed89a6bd9, type: 3}
