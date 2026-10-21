@@ -13,6 +13,7 @@ public class HHelth : MonoBehaviour
     [Header("体力")]
     [SerializeField] private int health = 3;
 
+
     // 死亡イベント
     public event Action OnDie;
 
@@ -43,7 +44,7 @@ public class HHelth : MonoBehaviour
         }
 
         health--;
-
+        
         Debug.Log(gameObject.name + " 残り体力: " + health);
 
         if (health <= 0)
