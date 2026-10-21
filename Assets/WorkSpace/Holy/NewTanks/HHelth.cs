@@ -7,6 +7,9 @@ public class HHelth : MonoBehaviour
     [Header("ダメージ対象のタグ")]
     [SerializeField] private string targetTag = "Enemy";
 
+    [Header("ダメージを与える弾")]
+    [SerializeField] private GameObject Bullet;
+
     [Header("体力")]
     [SerializeField] private int health = 3;
 
@@ -27,7 +30,14 @@ public class HHelth : MonoBehaviour
             return;
         }
 
-        if (!other.CompareTag(targetTag))
+        // タグがEnemyでなければ無視
+        if (!IsTarget(other.gameObject))
+        {
+            return;
+        }
+
+        // Inspectorで設定した弾でなければ無視
+        if (Bullet == null || other.gameObject != Bullet)
         {
             return;
         }
