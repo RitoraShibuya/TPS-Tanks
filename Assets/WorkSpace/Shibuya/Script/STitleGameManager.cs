@@ -1,7 +1,5 @@
-using UnityEditor;
+using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.EventSystems; 
-using UnityEngine.SceneManagement;
 
 public class STitleGameManager : SGameManagerBase
 {
@@ -10,67 +8,105 @@ public class STitleGameManager : SGameManagerBase
     [SerializeField] private GameObject SStageSelectUIPrefab;
 
     private GameObject STitleUIInstance;
+    private List<StageStatusInfo> m_stageStatusList = new();
 
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
     private void Start()
     {
         SUIManager.SInstance.SPlayFadeIn(0.4f);
         STitleUIInstance = SUIManager.SInstance.SShowUI(STitleUIPrefab);
 
-        //生成されたUIのコンポーネントを取得し、イベントを紐づける
         TCallingSelect selectUI = STitleUIInstance.GetComponent<TCallingSelect>();
         if (selectUI != null)
         {
-            // UIから「ステージが選ばれた」という通知が来たら、LoadStage を実行するよう予約
+            selectUI.OnCallStageSelect -= OnMainButtonClick;
             selectUI.OnCallStageSelect += OnMainButtonClick;
         }
+
+        UpdateStageStatusList();
     }
 
-    // Update is called once per frame
-    void Update()
+    public void UpdateStageStatusList()
     {
-        
+        if (SProgressManager.SInstance != null)
+        {
+            m_stageStatusList = SProgressManager.SInstance.GetStageStatusList(3);
+        }
     }
 
     public void OnMainButtonClick()
     {
-        if (!SProgressManager.SInstance.IsStageCleared(0))
+        if (m_isLoading) return;
+
+        UpdateStageStatusList();
+
+        if (!SProgressManager.SInstance.IsStageCleared(1))
         {
-            LoadStage(0);
+            LoadStage(1);
         }
         else
         {
             SUIManager.SInstance.SHideUI(STitleUIInstance);
 
-            SUIManager.SInstance.SShowUI(SStageSelectUIPrefab);
-            //UIManagerにUIを出してもらう
+            // 重複生成を排除し1回のみ生成
             GameObject uiInstance = SUIManager.SInstance.SShowUI(SStageSelectUIPrefab);
 
-            //生成されたUIのコンポーネントを取得し、イベントを紐づける
             StageSelectButtons selectUI = uiInstance.GetComponent<StageSelectButtons>();
             if (selectUI != null)
             {
-                // UIから「ステージが選ばれた」という通知が来たら、LoadStage を実行するよう予約
+                selectUI.OnStageSelectedEvent -= LoadStage;
                 selectUI.OnStageSelectedEvent += LoadStage;
+
+                // 今後 StageSelectButtons 側でボタン初期化処理を実装した際にコメント解除する
+                // selectUI.SetupButtons(m_stageStatusList);
             }
         }
-       
     }
 
     private void LoadStage(int stageID)
     {
+        if (m_isLoading) return;
+        if (stageID < 1 || stageID > 4) return;
+
+        // 未解放ステージは弾く
+        if (!SProgressManager.SInstance.IsStageUnlocked(stageID))
+        {
+            Debug.LogWarning($"Stage {stageID} はまだ解放されていません。");
+            return;
+        }
+
         SUIManager.SInstance.SPlayWipeOut(1.0f);
 
-        switch (stageID)
-        {
-            default:
-                break;
-            case 0:
-                LoadSceneWithDelay("TutorialScene", 1.0f);
-                break;
-            case 1:
-                LoadSceneWithDelay("Stage1Scene", 1.0f);
-                break;
-        }
+        string sceneName =  $"Stage{stageID}Scene";
+
+        LoadSceneWithDelay(sceneName, 1.0f);
     }
+
+    // --- デバッグ用ボタン描画 ---
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+    private void OnGUI()
+    {
+        GUILayout.BeginArea(new Rect(10, 10, 200, 280));
+        GUILayout.Label("<b>[ Debug Stage Load ]</b>");
+
+        for (int i = 1; i <= 3; i++)
+        {
+            bool isUnlocked = SProgressManager.SInstance.IsStageUnlocked(i);
+            bool isCleared = SProgressManager.SInstance.IsStageCleared(i);
+
+            string status = isCleared ? "[Cleared]" : (isUnlocked ? "[Unlocked]" : "[Locked]");
+            //string label = (i == 0) ? $"0: Tutorial {status}" : $"Stage {i} {status}";
+            string label = $"Stage {i} {status}";
+
+            GUI.enabled = isUnlocked && !m_isLoading;
+
+            if (GUILayout.Button(label, GUILayout.Height(35)))
+            {
+                LoadStage(i);
+            }
+        }
+
+        GUI.enabled = true;
+        GUILayout.EndArea();
+    }
+#endif
 }

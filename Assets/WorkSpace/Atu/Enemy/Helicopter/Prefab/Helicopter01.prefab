@@ -93,6 +93,7 @@ MonoBehaviour:
   gunBarrelTransform: {fileID: 6843067186853460296}
   mainRotor: {fileID: 9005655764091731731}
   tailRotor: {fileID: 965280101681646108}
+  modelForwardAxis: 1
   waypoints: []
   waypointThreshold: 1
   target: {fileID: 0}
