@@ -1,163 +1,98 @@
 using UnityEngine;
 
-/// <summary>
-/// 移動しない固定砲台のAIスクリプト
-/// </summary>
 public class FixedTurret : EnemyBase
 {
-    [Header("ステータス設定")]
-    [SerializeField] private float maxHp = 80f;
-    [SerializeField] private float sightDistance = 20f;         // 索敵距離
-    [SerializeField] private float sightAngle = 120f;           // 視野角
-    [SerializeField] private float turretRotationSpeed = 90f;   // 砲塔旋回速度
-    [SerializeField] private float pitchRotationSpeed = 60f;    // 砲身上下速度
-    [SerializeField] private float attackCooldown = 1.5f;       // 発射間隔（秒）
-    [SerializeField] private float attackPower = 15f;           // 攻撃力
+    public enum ModelForwardAxis { Forward, Back, Left, Right }
 
-    [Header("パーツ参照")]
-    [SerializeField] private Transform turretTransform;         // 砲塔（水平旋回）
-    [SerializeField] private Transform gunBarrelTransform;      // 砲身（上下旋回）
-    [SerializeField] private Transform muzzleTransform;         // 砲口（発射位置）
+    [Header("砲身・モデルパーツ")]
+    [SerializeField] private Transform turretBody;
+    [SerializeField] private Transform barrel;
+    [SerializeField] private Transform muzzleTransform;
 
-    [Header("弾の発射設定")]
-    [SerializeField] private GameObject bulletPrefab;           // 敵用弾プレハブ
-    [SerializeField] private float bulletSpeed = 20f;           // 弾速
+    [Header("軸オフセット設定")]
+    [SerializeField] private ModelForwardAxis modelForwardAxis = ModelForwardAxis.Forward;
 
-    [Header("砲身上下制限")]
-    [SerializeField] private float minGunPitch = -10f;
-    [SerializeField] private float maxGunPitch = 30f;
+    [Header("射撃・索敵設定")]
+    [SerializeField] private GameObject bulletPrefab;
+    [SerializeField] private float bulletSpeed = 30f;
+    [SerializeField] private float fireRate = 1.5f;
+    [SerializeField] private float attackRange = 25f;
+    [SerializeField] private float maxPitchAngle = 30f;
+    [SerializeField] private LayerMask obstacleLayer;
 
-    [Header("モデルの正面軸補正設定")]
-    [Tooltip("砲口（モデルの正面）が向いているローカル軸を指定")]
-    [SerializeField] private ModelForwardAxis modelForwardAxis = ModelForwardAxis.Left;
+    private float nextFireTime;
 
-    [Header("デバッグ機能")]
-    [Tooltip("このキーを押すと即死テストを実行（例: Kキー）")]
-    [SerializeField] private KeyCode debugKillKey = KeyCode.K;
-
-    public enum ModelForwardAxis { Forward, Right, Left, Back }
-
-    private float lastAttackTime = 0f;
-
-    protected override void Awake()
+    private Vector3 GetAdjustedForward(Transform t)
     {
-        base.Awake();
-        currentHealth = maxHp;
+        switch (modelForwardAxis)
+        {
+            case ModelForwardAxis.Back: return -t.forward;
+            case ModelForwardAxis.Left: return -t.right;
+            case ModelForwardAxis.Right: return t.right;
+            default: return t.forward;
+        }
     }
 
     private void Update()
     {
-        // --- デバッグ用機能: 指定キーで即死 ---
-        if (Input.GetKeyDown(debugKillKey))
-        {
-            Debug.Log($"[Debug] {gameObject.name} に即死キー ({debugKillKey}) が入力されました。");
-            TakeDamage(currentHealth); // 現在のHP全額分のダメージを与えて死亡させる
-            return;
-        }
-
-        // ターゲットが視界内に入っているかチェック
-        if (target != null && IsTargetInSight())
-        {
-            HandleAimAndShoot();
-        }
-    }
-
-    /// <summary>
-    /// ターゲットが視界（距離・視野角）内に入っているか判定
-    /// </summary>
-    private bool IsTargetInSight()
-    {
-        if (target == null) return false;
-
-        Vector3 direction = target.position - transform.position;
-        direction.y = 0f; // 水平距離で判定
-
-        float distance = direction.magnitude;
-        if (distance > sightDistance) return false;
-
-        direction.Normalize();
-        Vector3 forward = GetModelForward(transform);
-
-        float angle = Vector3.Angle(forward, direction);
-        return angle <= (sightAngle / 2f);
-    }
-
-    /// <summary>
-    /// 照準と射撃制御
-    /// </summary>
-    private void HandleAimAndShoot()
-    {
         if (target == null) return;
 
-        // 1. 水平砲塔（Turret）の旋回
-        if (turretTransform != null)
+        float distance = Vector3.Distance(transform.position, target.position);
+        if (distance > attackRange) return;
+
+        // 壁の遮蔽確認
+        if (HasLineOfSight())
         {
-            Vector3 turretTargetDir = target.position - turretTransform.position;
-            turretTargetDir.y = 0f;
+            AimAtTarget();
 
-            if (turretTargetDir != Vector3.zero)
+            if (Time.time >= nextFireTime)
             {
-                Quaternion targetTurretRot = Quaternion.LookRotation(turretTargetDir);
-
-                // 軸の向きに合わせて回転補正値を加算
-                switch (modelForwardAxis)
-                {
-                    case ModelForwardAxis.Right:
-                        targetTurretRot *= Quaternion.Euler(0, -90, 0);
-                        break;
-                    case ModelForwardAxis.Left:
-                        targetTurretRot *= Quaternion.Euler(0, 90, 0);
-                        break;
-                    case ModelForwardAxis.Back:
-                        targetTurretRot *= Quaternion.Euler(0, 180, 0);
-                        break;
-                }
-
-                turretTransform.rotation = Quaternion.RotateTowards(
-                    turretTransform.rotation,
-                    targetTurretRot,
-                    turretRotationSpeed * Time.deltaTime
-                );
+                nextFireTime = Time.time + fireRate;
+                ExecuteShoot();
             }
-        }
-
-        // 2. 上下砲身（GunBarrel）の旋回
-        if (gunBarrelTransform != null && turretTransform != null)
-        {
-            Vector3 localTargetPos = turretTransform.InverseTransformPoint(target.position);
-
-            // X軸方向（Left/Right）が正面の場合のローカル角度計算
-            float targetAngle = 0f;
-            if (modelForwardAxis == ModelForwardAxis.Left || modelForwardAxis == ModelForwardAxis.Right)
-            {
-                targetAngle = -Mathf.Atan2(localTargetPos.y, Mathf.Abs(localTargetPos.x)) * Mathf.Rad2Deg;
-            }
-            else
-            {
-                targetAngle = -Mathf.Atan2(localTargetPos.y, localTargetPos.z) * Mathf.Rad2Deg;
-            }
-
-            targetAngle = Mathf.Clamp(targetAngle, minGunPitch, maxGunPitch);
-
-            Quaternion targetBarrelRot = Quaternion.Euler(targetAngle, 0f, 0f);
-            gunBarrelTransform.localRotation = Quaternion.RotateTowards(
-                gunBarrelTransform.localRotation,
-                targetBarrelRot,
-                pitchRotationSpeed * Time.deltaTime
-            );
-        }
-
-        // 3. 射撃判定
-        if (Time.time >= lastAttackTime + attackCooldown)
-        {
-            lastAttackTime = Time.time;
-            ExecuteShoot();
         }
     }
 
-    /// <summary>
-    /// 弾を発射する
-    /// </summary>
+    private bool HasLineOfSight()
+    {
+        Vector3 origin = muzzleTransform != null ? muzzleTransform.position : transform.position;
+        Vector3 dir = (target.position - origin).normalized;
+        float dist = Vector3.Distance(origin, target.position);
+
+        if (Physics.Raycast(origin, dir, out RaycastHit hit, dist, obstacleLayer))
+        {
+            if (!hit.transform.IsChildOf(target) && !hit.transform.CompareTag(playerTag))
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void AimAtTarget()
+    {
+        if (turretBody != null)
+        {
+            Vector3 dir = (target.position - turretBody.position).normalized;
+            dir.y = 0;
+            if (dir != Vector3.zero)
+            {
+                Quaternion targetRot = Quaternion.LookRotation(dir);
+                turretBody.rotation = Quaternion.Slerp(turretBody.rotation, targetRot, Time.deltaTime * 5f);
+            }
+        }
+
+        if (barrel != null)
+        {
+            Vector3 dir = (target.position - barrel.position).normalized;
+            Quaternion targetRot = Quaternion.LookRotation(dir);
+            Vector3 angles = targetRot.eulerAngles;
+            float pitch = angles.x > 180 ? angles.x - 360 : angles.x;
+            pitch = Mathf.Clamp(pitch, -maxPitchAngle, maxPitchAngle);
+            barrel.localRotation = Quaternion.Euler(pitch, 0, 0);
+        }
+    }
+
     private void ExecuteShoot()
     {
         if (muzzleTransform == null || bulletPrefab == null || target == null) return;
@@ -165,51 +100,11 @@ public class FixedTurret : EnemyBase
         Vector3 shootDirection = (target.position - muzzleTransform.position).normalized;
         Quaternion bulletRotation = Quaternion.LookRotation(shootDirection);
 
-        GameObject bulletObj = Instantiate(
-            bulletPrefab,
-            muzzleTransform.position,
-            bulletRotation
-        );
+        GameObject bulletObj = Instantiate(bulletPrefab, muzzleTransform.position, bulletRotation);
 
-        if (bulletObj.TryGetComponent(out EnemyBullet bullet))
+        if (bulletObj.TryGetComponent(out SharedBullet bullet))
         {
-            bullet.Launch(shootDirection, bulletSpeed, attackPower);
+            bullet.Launch(shootDirection, bulletSpeed, statsData.attackPower, gameObject.tag);
         }
-    }
-
-    /// <summary>
-    /// 死亡処理（親クラスのDieをオーバーライドして確実にオブジェクト削除）
-    /// </summary>
-    protected override void Die()
-    {
-        Debug.Log($"{gameObject.name} が破壊されました。");
-        base.Die();
-        Destroy(gameObject); // オブジェクトを消去
-    }
-
-    /// <summary>
-    /// 指定トランスフォームの実際の見た目の正面方向を取得
-    /// </summary>
-    private Vector3 GetModelForward(Transform t)
-    {
-        switch (modelForwardAxis)
-        {
-            case ModelForwardAxis.Right: return t.right;
-            case ModelForwardAxis.Left: return -t.right;
-            case ModelForwardAxis.Back: return -t.forward;
-            default: return t.forward;
-        }
-    }
-
-    private void OnDrawGizmosSelected()
-    {
-        // 視界範囲（黄色）を描画
-        Gizmos.color = Color.yellow;
-        Vector3 forward = GetModelForward(transform);
-        Vector3 leftRay = Quaternion.Euler(0, -sightAngle / 2f, 0) * forward;
-        Vector3 rightRay = Quaternion.Euler(0, sightAngle / 2f, 0) * forward;
-
-        Gizmos.DrawRay(transform.position, leftRay * sightDistance);
-        Gizmos.DrawRay(transform.position, rightRay * sightDistance);
     }
 }

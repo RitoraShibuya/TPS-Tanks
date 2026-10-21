@@ -1,81 +1,86 @@
+using Tanks.Complete;
 using UnityEngine;
 
-public class EnemyBase : MonoBehaviour
+public abstract class EnemyBase : MonoBehaviour
 {
+    [System.Serializable]
+    public class Stats
+    {
+        public float maxHp = 100f;
+        public float currentHp = 100f;
+        public float attackPower = 10f;
+    }
+
+    [Header("敵の基本ステータス")]
+    [SerializeField] protected Stats statsData = new Stats();
+
     [Header("ターゲット設定")]
-    [Tooltip("攻撃対象（インスペクターで設定）")]
     [SerializeField] protected Transform target;
+    [SerializeField] protected string playerTag = "Player";
 
-    [Header("現在のHP")]
-    [SerializeField] protected float currentHealth;
 
-    [Header("ダメージ判定設定")]
-    [Tooltip("この名前を含むオブジェクトに当たったらダメージを受ける（例: Bullet, Turret, PlayerBullet など）")]
-    [SerializeField] protected string targetObjectName = "Turret";
+    //[SerializeField] private HHelth health;
 
-    public Transform Target => target;
-    public float CurrentHealth => currentHealth;
+    public float CurrentHp => statsData.currentHp;
+    public float MaxHp => statsData.maxHp;
 
     protected virtual void Awake()
     {
+        statsData.currentHp = statsData.maxHp;
+
+        // Playerタグのオブジェクトを自動検出しターゲットに設定
+        if (target == null)
+        {
+            GameObject playerObj = GameObject.FindGameObjectWithTag(playerTag);
+            if (playerObj != null)
+            {
+                target = playerObj.transform;
+            }
+        }
+
+        //if(TankHealth == null)
+        //{
+        //    TankHealth = GetComponent<HHelth>();
+        //}
     }
 
-    /// <summary>
-    /// 被弾処理（ダメージを受けて死亡判定を行う共通処理）
-    /// </summary>
-    public virtual void TakeDamage(float damage)
-    {
-        currentHealth -= damage;
-        Debug.Log($"{gameObject.name} が {damage} のダメージを受けました。残りHP: {currentHealth}");
+    //private void OnEnable()
+    //{
+    //    if(TankHealth != null)
+    //    {
+    //        TankHealth.OnDie += Die();
+    //    }
+    //}
 
-        if (currentHealth <= 0f)
+    //private void OnDisable()
+    //{
+    //    if (TankHealth != null)
+    //    {
+    //        TankHealth.OnDie -= Die;
+    //    }
+    //}
+
+
+    /// <summary>
+    /// 被ダメージ処理
+    /// </summary>
+    public virtual void TakeDamage(float amount)
+    {
+        statsData.currentHp -= amount;
+        Debug.Log($"[{gameObject.name}] 被ダメージ: {amount} / 残りHP: {statsData.currentHp}");
+
+        if (statsData.currentHp <= 0)
         {
             Die();
-        }
+                    }
     }
 
     /// <summary>
-    /// 死亡処理
+    /// 死亡・破棄処理
     /// </summary>
     protected virtual void Die()
     {
-        Debug.Log($"{gameObject.name} が撃破されました。");
+        Debug.Log($"[{gameObject.name}] 破壊されました。");
         Destroy(gameObject);
-    }
-
-    /// <summary>
-    /// 衝突判定（Trigger判定の場合）
-    /// </summary>
-    protected virtual void OnTriggerEnter(Collider other)
-    {
-        // 当たったオブジェクトの名前に対象文字列が含まれているかチェック
-        if (other.gameObject.name.Contains(targetObjectName))
-        {
-            // 例: ダメージ量を設定（あるいは弾側のコンポーネントからダメージ量を取得）
-            float damage = 10f;
-
-            // 弾側に DamageDealer などのスクリプトがついている場合はそこから取得も可能
-            /*
-            var bullet = other.GetComponent<Bullet>();
-            if (bullet != null) damage = bullet.Damage;
-            */
-
-            TakeDamage(damage);
-
-            // 当たった弾などのオブジェクトを消去（必要に応じて）
-            // Destroy(other.gameObject);
-        }
-    }
-
-    /// <summary>
-    /// 物理衝突判定（Collision判定の場合）
-    /// </summary>
-    protected virtual void OnCollisionEnter(Collision collision)
-    {
-        if (collision.gameObject.name.Contains(targetObjectName))
-        {
-            float damage = 10f;
-            TakeDamage(damage);
-        }
     }
 }
