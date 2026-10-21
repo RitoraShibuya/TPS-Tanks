@@ -10,6 +10,9 @@ public class TankProjectile : MonoBehaviour
     [SerializeField]
     private float lifeTime = 10f;
 
+    [SerializeField]
+    private float gravityMultiplier = 12f;
+
     private Rigidbody rb;
 
     private float straightFlightDistance;
@@ -18,13 +21,25 @@ public class TankProjectile : MonoBehaviour
 
     private bool isFalling;
 
+
     private void Awake()
     {
         rb = GetComponent<Rigidbody>();
 
         rb.useGravity = false;
         rb.interpolation = RigidbodyInterpolation.Interpolate;
+
+        TankParameterManager manager = TankParameterManager.Instance;
+
+        if (manager != null)
+        {
+            gravityMultiplier = manager.GetFloat(
+                "gravityMultiplier",
+                gravityMultiplier
+            );
+        }
     }
+
 
     public void Launch(
         Vector3 aimPoint,
@@ -68,26 +83,30 @@ public class TankProjectile : MonoBehaviour
             return;
         }
 
-        // 直進時間を計測
         if (!isFalling)
         {
             flightElapsedTime += Time.fixedDeltaTime;
 
-            // 指定距離を飛び終えたら重力を有効化
             if (flightElapsedTime >= straightFlightTime)
             {
                 isFalling = true;
-                rb.useGravity = true;
+                rb.useGravity = false;
             }
         }
 
-        // 落下中は進行方向に弾を向ける
-        if (isFalling &&
-            rb.linearVelocity.sqrMagnitude > 0.0001f)
+        if (isFalling)
         {
-            transform.rotation = Quaternion.LookRotation(
-                rb.linearVelocity
+            rb.AddForce(
+                Physics.gravity * (gravityMultiplier - 1f),
+                ForceMode.Acceleration
             );
+
+            if (rb.linearVelocity.sqrMagnitude > 0.0001f)
+            {
+                transform.rotation = Quaternion.LookRotation(
+                    rb.linearVelocity
+                );
+            }
         }
     }
 
@@ -100,4 +119,6 @@ public class TankProjectile : MonoBehaviour
     {
         Destroy(gameObject);
     }
+
+    
 }

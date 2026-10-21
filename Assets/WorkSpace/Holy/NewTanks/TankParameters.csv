@@ -1,0 +1,20 @@
+﻿Parameter,Value
+cameraDistance,6
+cameraHeight,3.5
+deadZone,0.3
+moveSpeed,5
+rotationSpeed,180
+aimHorizontalSpeed,90
+aimVerticalSpeed,60
+autoResetSpeed,90
+maxElevation,30
+minElevation,-10
+reticleOffset,50
+aimCoefficient,0.5
+aimSwitchPoint,0.3
+bulletFlightSpeed,20
+bulletStraightDistance,12
+gravityMultiplier,12
+fireCooldown,0.3
+fireEffectName,CFXR3 Hit Fire B (Air)
+hitEffectName,CFXR3 Fire Explosion B

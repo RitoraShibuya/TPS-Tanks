@@ -81,6 +81,11 @@ public class TankMovement : MonoBehaviour
     [SerializeField]
     private LayerMask predictionLayerMask = -1;
 
+    [SerializeField]
+    private float fireCooldown = 0.3f;
+
+    private float nextFireTime = 0f;
+
     private Camera aimCamera;
 
     // レイが当たったワールド座標
@@ -136,7 +141,19 @@ public class TankMovement : MonoBehaviour
     void Start()
     {
         rb = GetComponent<Rigidbody>();
-        aimCamera = mainCamera.GetComponent<Camera>();
+
+        if (mainCamera == null && Camera.main != null)
+        {
+            mainCamera = Camera.main.transform;
+        }
+
+        if (mainCamera != null)
+        {
+            aimCamera = mainCamera.GetComponent<Camera>();
+        }
+
+        LoadTankParameters();
+
         rb.constraints = RigidbodyConstraints.FreezeRotation;
 
         if (mainCamera == null)
@@ -350,6 +367,13 @@ public class TankMovement : MonoBehaviour
 
     void OnFirePerformd(InputAction.CallbackContext context)
     {
+        if (Time.time < nextFireTime)
+        {
+            return;
+        }
+
+        nextFireTime = Time.time + fireCooldown;
+
         float spawnDistance = 1.0f;
 
         Vector3 bulletPosition =
@@ -487,4 +511,49 @@ public class TankMovement : MonoBehaviour
             landingReticle.position = landingScreenPosition;
         }
     }
+
+
+
+    private void LoadTankParameters()
+    {
+        TankParameterManager manager = TankParameterManager.Instance;
+
+        if (manager == null)
+        {
+            Debug.LogError("TankParameterManager が見つかりません！");
+            return;
+        }
+
+        moveSpeed = manager.GetFloat("moveSpeed", moveSpeed);
+        rotationSpeed = manager.GetFloat("rotationSpeed", rotationSpeed);
+        deadZone = manager.GetFloat("deadZone", deadZone);
+
+        aimHorizontalSpeed = manager.GetFloat(
+            "aimHorizontalSpeed", aimHorizontalSpeed);
+
+        aimVerticalSpeed = manager.GetFloat(
+            "aimVerticalSpeed", aimVerticalSpeed);
+
+        autoResetSpeed = manager.GetFloat(
+            "autoResetSpeed", autoResetSpeed);
+
+        maxElevation = manager.GetFloat("maxElevation", maxElevation);
+        minElevation = manager.GetFloat("minElevation", minElevation);
+
+        bulletFlightSpeed = manager.GetFloat(
+            "bulletFlightSpeed", bulletFlightSpeed);
+
+        bulletStraightDistance = manager.GetFloat(
+            "bulletStraightDistance", bulletStraightDistance);
+
+        cameraOffset = new Vector3(
+            0f,
+            manager.GetFloat("cameraHeight", 1.5f),
+            -manager.GetFloat("cameraDistance", 6f)
+        );
+
+        Debug.Log($"移動速度: {moveSpeed}");
+    }
+
+
 }
