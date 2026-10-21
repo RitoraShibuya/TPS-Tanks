@@ -82,6 +82,9 @@ public class TankMovement : MonoBehaviour
     private LayerMask predictionLayerMask = -1;
 
     [SerializeField]
+    private HHelth health;
+
+    [SerializeField]
     private float fireCooldown = 0.3f;
 
     private float nextFireTime = 0f;
@@ -120,6 +123,11 @@ public class TankMovement : MonoBehaviour
 
         fireAction.AddBinding("<Gamepad>/leftShoulder");
         fireAction.AddBinding("<Keyboard>/r");
+
+        if (health == null)
+        {
+            health = GetComponent<HHelth>();
+        }
     }
 
     private void OnEnable()
@@ -128,6 +136,11 @@ public class TankMovement : MonoBehaviour
         aimAction.Enable();
         fireAction.Enable();
         fireAction.performed += OnFirePerformd;
+
+        if (health != null)
+        {
+            health.OnDie += Die;
+        }
     }
 
     private void OnDisable()
@@ -136,6 +149,19 @@ public class TankMovement : MonoBehaviour
         aimAction.Disable();
         fireAction.performed -= OnFirePerformd;
         fireAction.Disable();
+
+        if (health != null)
+        {
+            health.OnDie -= Die;
+        }
+    }
+
+    private void Die()
+    {
+        Debug.Log("Playerが死亡した！");
+
+        // Player固有の死亡処理
+        // 例：操作停止、死亡UI表示、アニメーション再生
     }
 
     void Start()
@@ -347,10 +373,7 @@ public class TankMovement : MonoBehaviour
                 }
             }
         }
-    }
 
-    void LateUpdate()
-    {
         // ============================================
         // カメラの追従処理
         // ============================================
@@ -363,6 +386,11 @@ public class TankMovement : MonoBehaviour
             mainCamera.rotation = camTargetRot;
             mainCamera.position = tankTurret.position + camTargetRot * cameraOffset;
         }
+    }
+
+    void LateUpdate()
+    {
+
     }
 
     void OnFirePerformd(InputAction.CallbackContext context)
