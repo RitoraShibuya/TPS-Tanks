@@ -57,7 +57,6 @@ public class TankMovement : MonoBehaviour
     private Vector3 currentTurretForward;
     private float currentPitch = 0f;
 
-
     [Header("着弾レティクル")]
     [SerializeField]
     private RectTransform landingReticle;
@@ -65,11 +64,9 @@ public class TankMovement : MonoBehaviour
     [SerializeField]
     private Canvas reticleCanvas;
 
-
     [Header("落下開始地点マーカー")]
     [SerializeField]
     private Transform fallPointMarker;
-
 
     [Header("落下地点の予測")]
     [SerializeField]
@@ -100,10 +97,8 @@ public class TankMovement : MonoBehaviour
     // 有効な着弾地点が見つかったか
     public bool hasLandingPoint;
 
-
     [Header("値チェック")]
-    public  Vector2 Val1= Vector2.zero;
-
+    public Vector2 Val1 = Vector2.zero;
 
     private void Awake()
     {
@@ -215,12 +210,6 @@ public class TankMovement : MonoBehaviour
             Quaternion yawRot = Quaternion.AngleAxis(rightInput.x * aimHorizontalSpeed * Time.deltaTime, Vector3.up);
             currentTurretForward = yawRot * currentTurretForward;
 
-            // 上下：ピッチ角度の更新
-
-            //自動ピッチ角度更新
-            //currentPitch -= rightInput.y * aimVerticalSpeed * Time.deltaTime;
-            //currentPitch = Mathf.Clamp(currentPitch, minElevation, maxElevation);
-
             // 各角度止まる
             float radiusChange = 0.5f;
 
@@ -243,7 +232,6 @@ public class TankMovement : MonoBehaviour
                 }
             }
         }
-
         else
         {
             // ニュートラル時に水平へ戻る
@@ -270,7 +258,6 @@ public class TankMovement : MonoBehaviour
             rb.constraints = RigidbodyConstraints.FreezeRotation;
         }
 
-
         // ============================================
         // 坂道判定 (停止中も砲台の傾きのために常に計算する)
         // ============================================
@@ -281,7 +268,7 @@ public class TankMovement : MonoBehaviour
             groundNormal = hit.normal;
         }
 
-        //坂道に入ったら重力を無効化
+        // 坂道に入ったら重力を無効化
         float dot = Vector3.Dot(hit.normal, Vector3.up);
         if (dot > 0.99f || dot <= 0)
         {
@@ -413,24 +400,24 @@ public class TankMovement : MonoBehaviour
             firePosition.rotation
         );
 
-        TankProjectile projectile = bullet.GetComponent<TankProjectile>();
-
-        if (projectile != null)
+        // ★TankProjectile を SharedBullet へのアタッチ判定に変更
+        if (bullet.TryGetComponent(out SharedBullet sharedBullet))
         {
-            Vector3 aimPoint =
-                bulletPosition + firePosition.forward * 50f;
+            float attackPower = 10f; // プレイヤーの攻撃力
 
-            projectile.Launch(
-                aimPoint,
-                bulletStraightDistance,
-                bulletFlightSpeed
+            sharedBullet.Launch(
+                firePosition.forward,
+                bulletFlightSpeed,
+                attackPower,
+                gameObject.tag
             );
         }
         else
         {
-            Debug.LogError("BulletにTankProjectileがありません！");
+            Debug.LogError("Bullet プレハブに SharedBullet コンポーネントがアタッチされていません！");
         }
     }
+
     private void UpdateLandingPoint()
     {
         hasLandingPoint = false;
@@ -540,8 +527,6 @@ public class TankMovement : MonoBehaviour
         }
     }
 
-
-
     private void LoadTankParameters()
     {
         TankParameterManager manager = TankParameterManager.Instance;
@@ -582,6 +567,4 @@ public class TankMovement : MonoBehaviour
 
         Debug.Log($"移動速度: {moveSpeed}");
     }
-
-
 }
