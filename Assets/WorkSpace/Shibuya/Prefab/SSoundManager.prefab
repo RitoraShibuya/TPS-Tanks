@@ -1,0 +1,65 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &8597087697082419717
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1861210109798556834}
+  - component: {fileID: 6254181037769413370}
+  m_Layer: 0
+  m_Name: SSoundManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1861210109798556834
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8597087697082419717}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 5.61053, y: 0.5, z: -1.47656}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &6254181037769413370
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8597087697082419717}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fbe393b6f64d64b4890e5284ad0c4d53, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: '::'
+  bgmVolume: 1
+  seVolume: 1
+  bgmInGame: {fileID: 8300000, guid: 3a93f0ec0963de2409d17a9106fb872d, type: 3}
+  bgmMenu: {fileID: 8300000, guid: 692b258297152d24992f3530cedc4a71, type: 3}
+  bgmStageClear: {fileID: 0}
+  bgmGameOver: {fileID: 0}
+  seShoot: {fileID: 8300000, guid: 0db9a7b747fae234eaefc362213c1fdc, type: 3}
+  seImpact: {fileID: 8300000, guid: cfbffd510a53a7c4ab58053ff77c433c, type: 3}
+  seTankDestroy: {fileID: 8300000, guid: 02df051de78c78e43ba96566024019a1, type: 3}
+  seTurretRotate: {fileID: 8300000, guid: b92cbb7db270e8b4eb92c54810182572, type: 3}
+  seTankMoveEngine: {fileID: 8300000, guid: 8467954d747e86e41acb4f6ef644da1c, type: 3}
+  seCollision: {fileID: 8300000, guid: 68bd115111d25fb4491154a5b6a1bbc8, type: 3}
+  seDecide: {fileID: 8300000, guid: b1d8d5f4a6e09814fae018bb7efcb88b, type: 3}
+  seCursor: {fileID: 8300000, guid: 3cc0243ea14048e40baf2432e58855d8, type: 3}
+  seStageClear: {fileID: 8300000, guid: 59f9dbda4bdf0de49b26ff8b21bd57f9, type: 3}
+  seGameOver: {fileID: 8300000, guid: 382577e0da310584d8649bed985e0685, type: 3}
+  seWallVanish: {fileID: 8300000, guid: b20f64497bad97b41876c145ab5458aa, type: 3}
+  seSwitchPressed: {fileID: 8300000, guid: b1d8d5f4a6e09814fae018bb7efcb88b, type: 3}
+  seSwitchAppear: {fileID: 8300000, guid: 66c3f678065e21e4f893e31ed89a6bd9, type: 3}

@@ -108,6 +108,12 @@ public class SInGameManagerBase : SGameManagerBase
     // ==========================================
     protected virtual void Start()
     {
+        // ★インゲームBGMの再生
+        if (SSoundManager.Instance != null)
+        {
+            SSoundManager.Instance.PlayBGM_InGame();
+        }
+
         // シーン上の TankMovement を自動検索
         m_playerTank = FindFirstObjectByType<TankMovement>();
 
@@ -211,6 +217,13 @@ public class SInGameManagerBase : SGameManagerBase
         if (m_isGameEnded || m_isLoading) return;
         m_isGameEnded = true;
 
+        // ★BGMを停止し、クリアSEを再生
+        if (SSoundManager.Instance != null)
+        {
+            SSoundManager.Instance.StopBGM();
+            SSoundManager.Instance.PlaySE_StageClear();
+        }
+
         SStageData data = SProgressManager.SInstance.GetStageData(SStageID);
         if (data == null)
         {
@@ -244,6 +257,13 @@ public class SInGameManagerBase : SGameManagerBase
         // 既にゲーム終了済み、またはシーン遷移中なら何もしない
         if (m_isGameEnded || m_isLoading) return;
         m_isGameEnded = true;
+
+        // ★BGMを停止し、ゲームオーバーSEを再生
+        if (SSoundManager.Instance != null)
+        {
+            SSoundManager.Instance.StopBGM();
+            SSoundManager.Instance.PlaySE_GameOver();
+        }
 
         OnGameEnd();
         GameObject overUI = SUIManager.SInstance.SShowUI(SGameOverPrefab);

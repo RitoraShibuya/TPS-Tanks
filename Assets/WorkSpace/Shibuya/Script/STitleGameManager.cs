@@ -12,6 +12,12 @@ public class STitleGameManager : SGameManagerBase
 
     private void Start()
     {
+        // メニュー用BGMを再生
+        if (SSoundManager.Instance != null)
+        {
+            SSoundManager.Instance.PlayBGM_Menu();
+        }
+
         SUIManager.SInstance.SPlayFadeIn(0.4f);
         STitleUIInstance = SUIManager.SInstance.SShowUI(STitleUIPrefab);
 
@@ -76,7 +82,7 @@ public class STitleGameManager : SGameManagerBase
 
         SUIManager.SInstance.SPlayWipeOut(1.0f);
 
-        string sceneName =  $"Stage{stageID}Scene";
+        string sceneName = $"Stage{stageID}Scene";
 
         LoadSceneWithDelay(sceneName, 1.0f);
     }
