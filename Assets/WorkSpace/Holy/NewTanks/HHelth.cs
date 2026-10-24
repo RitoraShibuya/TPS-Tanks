@@ -13,6 +13,7 @@ public class HHelth : MonoBehaviour
     [Header("体力")]
     [SerializeField] private int health = 3;
 
+
     // 死亡イベント
     public event Action OnDie;
 
@@ -25,25 +26,26 @@ public class HHelth : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
+        
         if (isDead)
         {
             return;
         }
-
+        
         // タグがEnemyでなければ無視
         if (!IsTarget(other.gameObject))
         {
             return;
         }
-
+        Debug.Log("HitT");
         // Inspectorで設定した弾でなければ無視
         if (Bullet == null || other.gameObject != Bullet)
         {
             return;
         }
-
+        Debug.Log("HitB");
         health--;
-
+        
         Debug.Log(gameObject.name + " 残り体力: " + health);
 
         if (health <= 0)
