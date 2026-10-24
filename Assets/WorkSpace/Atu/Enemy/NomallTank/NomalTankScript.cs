@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.AI;
 
+[RequireComponent(typeof(NavMeshAgent))]
 public class EnemyTankController : EnemyBase
 {
     public enum ModelForwardAxis { Forward, Right, Left, Back }
@@ -27,33 +29,54 @@ public class EnemyTankController : EnemyBase
     [SerializeField] private float waypointWaitTime = 2f;
 
     [Header("索敵・前方視界設定")]
-    [SerializeField] private float sightDistance = 15f; // 正面視界の届く距離
-    [SerializeField] private float sightAngle = 120f;   // 視野角（例: 120度なら正面から左右60度ずつ）
+    [SerializeField] private float sightDistance = 15f;
+    [SerializeField] private float sightAngle = 120f;
 
     [Header("射撃パラメータ")]
     [SerializeField] private GameObject bulletPrefab;
     [SerializeField] private float bulletSpeed = 40f;
-    [SerializeField] private float attackRange = 20f;   // 攻撃に移行する距離
+    [SerializeField] private float attackRange = 20f;
     [SerializeField] private float fireRate = 2f;
-    [SerializeField] private LayerMask obstacleLayer = ~0;
 
+    [Header("遮蔽判定設定")]
+    [SerializeField] private LayerMask obstacleLayer;
+
+    private NavMeshAgent agent;
     private float nextFireTime;
 
-    // WayPoint巡回用
     private int currentWaypointIndex = 0;
     private bool isPatrolReverse = false;
     private float waitTimer = 0f;
     private bool isWaiting = false;
 
-    // 検知フラグ
     private bool isPlayerDetected = false;
+
+    protected override void Awake()
+    {
+        base.Awake();
+        agent = GetComponent<NavMeshAgent>();
+
+        if (agent != null)
+        {
+            agent.speed = moveSpeed;
+            agent.angularSpeed = bodyRotationSpeed;
+            agent.stoppingDistance = 0.5f;
+            // 自前でモデルの軸補正回転を行うため、Agentの自動回転をオフにする
+            agent.updateRotation = false;
+        }
+    }
 
     private void Update()
     {
-        // 1. ターゲットが視界に入っているかチェック（未検知時のみ）
+        if (agent == null || !agent.isActiveAndEnabled || !agent.isOnNavMesh) return;
+
+        // NavMeshAgentの移動方向に合わせて、軸補正を行いながら滑らかに回転させる
+        UpdateBodyRotation();
+
+        // 1. ターゲットが視界に入っているかチェック
         if (!isPlayerDetected && IsTargetInSight())
         {
-            isPlayerDetected = true; // 正面視界に入ったのでプレイヤーを検知！
+            isPlayerDetected = true;
         }
 
         // --- 行動分岐 ---
@@ -61,9 +84,9 @@ public class EnemyTankController : EnemyBase
         {
             float distance = Vector3.Distance(transform.position, target.position);
 
-            // 攻撃距離内 ＆ 射線が通っている場合：停止して砲撃
             if (distance <= attackRange && HasLineOfSight())
             {
+                agent.isStopped = true;
                 AimTurret();
 
                 if (Time.time >= nextFireTime)
@@ -74,70 +97,65 @@ public class EnemyTankController : EnemyBase
             }
             else
             {
-                // 検知済みだが攻撃距離外：プレイヤーの方向へ直接移動
-                MoveTowardsPosition(target.position);
+                agent.isStopped = false;
+                agent.SetDestination(target.position);
                 AimTurret();
             }
         }
         else
         {
-            // --- 未検知状態：WayPoint巡回 ---
             if (HasValidWaypoints())
             {
+                agent.isStopped = false;
                 PatrolWaypoints();
             }
-        }
-    }
-
-    /// <summary>
-    /// 指定位置へ車体を旋回させながら直進移動（NavMeshを使わない基本物理/Transform移動）
-    /// </summary>
-    private void MoveTowardsPosition(Vector3 targetPosition)
-    {
-        Vector3 direction = (targetPosition - transform.position);
-        direction.y = 0f; // 水平移動のみ
-
-        if (direction != Vector3.zero)
-        {
-            // 車体の進行方向への旋回
-            Quaternion targetRotation = Quaternion.LookRotation(direction);
-
-            // モデル正面軸補正
-            switch (modelForwardAxis)
+            else
             {
-                case ModelForwardAxis.Right: targetRotation *= Quaternion.Euler(0, -90, 0); break;
-                case ModelForwardAxis.Left: targetRotation *= Quaternion.Euler(0, 90, 0); break;
-                case ModelForwardAxis.Back: targetRotation *= Quaternion.Euler(0, 180, 0); break;
+                agent.isStopped = true;
             }
-
-            transform.rotation = Quaternion.RotateTowards(
-                transform.rotation,
-                targetRotation,
-                bodyRotationSpeed * Time.deltaTime
-            );
-
-            // 直進移動
-            transform.position = Vector3.MoveTowards(
-                transform.position,
-                targetPosition,
-                moveSpeed * Time.deltaTime
-            );
         }
     }
 
     /// <summary>
-    /// FixedTurretを踏襲した視界判定（距離・モデル正面軸の視野角・壁の裏でないか）
+    /// NavMeshAgentの進行方向（desiredVelocity）に対してモデル軸補正をかけて回転させる
     /// </summary>
+    private void UpdateBodyRotation()
+    {
+        // 移動中の場合（移動速度ベクトルが存在する場合）
+        if (agent.desiredVelocity.sqrMagnitude > 0.1f)
+        {
+            Vector3 moveDir = agent.desiredVelocity.normalized;
+            moveDir.y = 0f;
+
+            if (moveDir != Vector3.zero)
+            {
+                Quaternion targetRot = Quaternion.LookRotation(moveDir);
+
+                // モデルの正面軸に合わせて回転補正
+                switch (modelForwardAxis)
+                {
+                    case ModelForwardAxis.Right: targetRot *= Quaternion.Euler(0, -90, 0); break;
+                    case ModelForwardAxis.Left: targetRot *= Quaternion.Euler(0, 90, 0); break;
+                    case ModelForwardAxis.Back: targetRot *= Quaternion.Euler(0, 180, 0); break;
+                }
+
+                transform.rotation = Quaternion.RotateTowards(
+                    transform.rotation,
+                    targetRot,
+                    bodyRotationSpeed * Time.deltaTime
+                );
+            }
+        }
+    }
+
     private bool IsTargetInSight()
     {
         if (target == null) return false;
 
-        // 1. 距離判定
         Vector3 directionToTarget = target.position - transform.position;
         float distance = directionToTarget.magnitude;
         if (distance > sightDistance) return false;
 
-        // 2. 視野角判定（水平面で計算）
         Vector3 horizontalDir = directionToTarget;
         horizontalDir.y = 0f;
         horizontalDir.Normalize();
@@ -147,28 +165,30 @@ public class EnemyTankController : EnemyBase
         float angle = Vector3.Angle(forward, horizontalDir);
         if (angle > (sightAngle / 2f)) return false;
 
-        // 3. 壁（障害物）の遮蔽チェック (Raycast)
         return HasLineOfSight();
     }
 
-    /// <summary>
-    /// 射線（Raycast）遮蔽チェック
-    /// </summary>
     private bool HasLineOfSight()
     {
         if (target == null) return false;
 
-        Vector3 rayStartPos = turretTransform != null ? turretTransform.position : transform.position + Vector3.up * 1f;
-        Vector3 rayDir = (target.position - rayStartPos).normalized;
-        float dist = Vector3.Distance(rayStartPos, target.position);
+        Vector3 rayStartPos = muzzleTransform != null ? muzzleTransform.position : transform.position + Vector3.up * 1f;
+        Vector3 targetCenterPos = target.position + Vector3.up * 0.5f;
+        Vector3 rayDir = (targetCenterPos - rayStartPos).normalized;
+        float dist = Vector3.Distance(rayStartPos, targetCenterPos);
 
-        if (Physics.Raycast(rayStartPos, rayDir, out RaycastHit hit, dist, obstacleLayer))
+        RaycastHit[] hits = Physics.RaycastAll(rayStartPos, rayDir, dist, obstacleLayer);
+
+        foreach (var hit in hits)
         {
+            if (hit.transform.IsChildOf(transform) || hit.transform == transform) continue;
+
             if (!hit.transform.IsChildOf(target) && hit.transform != target && !hit.transform.CompareTag(playerTag))
             {
-                return false; // 壁に遮られている
+                return false;
             }
         }
+
         return true;
     }
 
@@ -214,9 +234,9 @@ public class EnemyTankController : EnemyBase
             return;
         }
 
-        MoveTowardsPosition(currentPoint.position);
+        agent.SetDestination(currentPoint.position);
 
-        if (Vector3.Distance(transform.position, currentPoint.position) <= waypointArriveDistance)
+        if (!agent.pathPending && agent.remainingDistance <= waypointArriveDistance)
         {
             isWaiting = true;
         }
@@ -298,7 +318,6 @@ public class EnemyTankController : EnemyBase
 
     private void OnDrawGizmosSelected()
     {
-        // 1. 正面軸補正を考慮した視界範囲（黄色）を描画
         Gizmos.color = Color.yellow;
         Vector3 forward = GetModelForward(transform);
         Vector3 leftRay = Quaternion.Euler(0, -sightAngle / 2f, 0) * forward;
@@ -308,11 +327,9 @@ public class EnemyTankController : EnemyBase
         Gizmos.DrawRay(transform.position, rightRay * sightDistance);
         Gizmos.DrawRay(transform.position, forward * sightDistance);
 
-        // 2. 攻撃距離（赤色）
         Gizmos.color = Color.red;
         Gizmos.DrawWireSphere(transform.position, attackRange);
 
-        // 3. WayPointの描画（水色）
         if (waypoints != null && waypoints.Count > 0)
         {
             Gizmos.color = Color.cyan;
