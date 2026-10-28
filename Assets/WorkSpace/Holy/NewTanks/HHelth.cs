@@ -29,6 +29,7 @@ public class HHelth : MonoBehaviour
 
         health--;
 
+
         Debug.Log(gameObject.name + " 残り体力: " + health);
 
         if (health <= 0)
@@ -37,6 +38,7 @@ public class HHelth : MonoBehaviour
 
             // 死亡イベントを発行
             OnDie?.Invoke();
+            
         }
     }
 }
