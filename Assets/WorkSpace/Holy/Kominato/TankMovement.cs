@@ -410,29 +410,32 @@ public class TankMovement : MonoBehaviour
             firePosition.rotation
         );
 
-        // ★TankProjectile を SharedBullet へのアタッチ判定に変更
-        if (bullet.TryGetComponent(out SharedBullet sharedBullet))
-        {
-            float attackPower = 10f; // プレイヤーの攻撃力
+        TankProjectile projectile = bullet.GetComponent<TankProjectile>();
 
-<<<<<<< HEAD
-            sharedBullet.Launch(
-                firePosition.forward,
-                bulletFlightSpeed,
-                attackPower,
-                gameObject.tag
-=======
+        if (projectile != null)
+        {
+            Vector3 aimPoint =
+                bulletPosition + firePosition.forward * 50f;
+
             projectile.Launch(
                 aimPoint,
                 bulletStraightDistance,
                 bulletFlightSpeed,
                 transform
->>>>>>> Holy
+            );
+        }
+        else if (bullet.TryGetComponent(out SharedBullet sharedBullet))
+        {
+            // Bullet プレハブが SharedBullet の場合はまっすぐ撃つ
+            sharedBullet.Launch(
+                firePosition.forward,
+                bulletFlightSpeed,
+                gameObject
             );
         }
         else
         {
-            Debug.LogError("Bullet プレハブに SharedBullet コンポーネントがアタッチされていません！");
+            Debug.LogError("Bullet に TankProjectile / SharedBullet がありません！");
         }
     }
 

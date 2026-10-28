@@ -3,21 +3,12 @@ using UnityEngine;
 [RequireComponent(typeof(Rigidbody))]
 public class SharedBullet : MonoBehaviour
 {
-<<<<<<< HEAD
-    public float Damage { get; private set; }
-
-    [Header("着弾エフェクト（任意）")]
-    [SerializeField] private GameObject hitEffectPrefab;
-
-    private string shooterTag = "";
-=======
     [Header("着弾エフェクト（任意）")]
     [SerializeField] private GameObject hitEffectPrefab;
 
     private Transform shooter;      // 発射した本人
     private bool isEnemyShot;       // 敵（EnemyBase）が撃った弾か
     private bool hasHit;
->>>>>>> Holy
     private Rigidbody rb;
 
     private void Awake()
@@ -25,15 +16,6 @@ public class SharedBullet : MonoBehaviour
         rb = GetComponent<Rigidbody>();
     }
 
-<<<<<<< HEAD
-    public void Launch(Vector3 direction, float speed, float attackPower, string shooterTag, float lifeTime = 3f)
-    {
-        Damage = attackPower;
-        this.shooterTag = shooterTag;
-
-        if (rb != null)
-        {
-=======
     /// <summary>
     /// 弾の発射初期化処理（発射元の GameObject を渡す）
     /// ※陣営はタグではなく EnemyBase / HHelth コンポーネントの有無で判定する
@@ -56,34 +38,23 @@ public class SharedBullet : MonoBehaviour
             }
 
             // 進行方向に物理速度を与える
->>>>>>> Holy
             rb.linearVelocity = direction.normalized * speed;
         }
 
+        // 指定時間後に自動消滅
         Destroy(gameObject, lifeTime);
     }
 
     private void OnTriggerEnter(Collider other)
     {
-<<<<<<< HEAD
-        // 1. 発射した本人・同じ陣営（親・ルート階層含む）なら無視
-        if (CheckTagInHierarchy(other, shooterTag))
-=======
         if (hasHit) return;
 
         // 1. 発射した本人ならスルー（自爆防止）
         if (shooter != null && other.transform.IsChildOf(shooter))
->>>>>>> Holy
         {
             return;
         }
 
-<<<<<<< HEAD
-        // 2. プレイヤー（HHelth）への命中判定
-        if (other.GetComponentInParent<HHelth>() is HHelth playerHealth)
-        {
-            playerHealth.TakeDamage((int)Damage);
-=======
         EnemyBase enemy = other.GetComponentInParent<EnemyBase>();
         HHelth player = other.GetComponentInParent<HHelth>();
 
@@ -107,30 +78,21 @@ public class SharedBullet : MonoBehaviour
             Debug.Log($"[SharedBullet] Playerの弾が 敵 ({other.name}) に命中！");
             enemy.TakeDamage();
 
->>>>>>> Holy
             OnHit();
             return;
         }
 
-<<<<<<< HEAD
-        // 3. 敵（EnemyBase）への命中判定
-        if (other.GetComponentInParent<EnemyBase>() is EnemyBase enemy)
-        {
-            enemy.TakeDamage(Damage);
-            OnHit();
-            return;
-        }
-
-        // 4. 壁や障害物（Trigger以外のコライダー）に着弾した場合
-=======
         // 4. 壁や地面・障害物（Trigger以外のコライダー）に当たった場合
->>>>>>> Holy
         if (!other.isTrigger)
         {
+            Debug.Log($"[SharedBullet] 障害物 ({other.name}) に着弾。");
             OnHit();
         }
     }
 
+    /// <summary>
+    /// 着弾・消滅共通処理
+    /// </summary>
     private void OnHit()
     {
         hasHit = true;
@@ -141,19 +103,4 @@ public class SharedBullet : MonoBehaviour
         }
         Destroy(gameObject);
     }
-<<<<<<< HEAD
-
-    private bool CheckTagInHierarchy(Collider col, string targetTag)
-    {
-        if (string.IsNullOrEmpty(targetTag)) return false;
-
-        if (col.CompareTag(targetTag)) return true;
-        if (col.transform.parent != null && col.transform.parent.CompareTag(targetTag)) return true;
-        if (col.transform.root != null && col.transform.root.CompareTag(targetTag)) return true;
-
-        return false;
-    }
 }
-=======
-}
->>>>>>> Holy
