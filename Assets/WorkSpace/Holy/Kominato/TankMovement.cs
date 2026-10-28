@@ -68,9 +68,9 @@ public class TankMovement : MonoBehaviour
     [SerializeField]
     private Transform fallPointMarker;
 
-    [Header("落下地点の予測")]
-    [SerializeField]
-    private float predictionMaxTime = 5f;
+    //[Header("落下地点の予測")]
+    //[SerializeField]
+    //private float predictionMaxTime = 5f;
 
     [SerializeField]
     private float predictionStep = 0.05f;

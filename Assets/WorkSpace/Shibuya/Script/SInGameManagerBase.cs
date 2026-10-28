@@ -132,6 +132,9 @@ public class SInGameManagerBase : SGameManagerBase
         // 敵の死亡監視イベントを登録
         SetupEnemyObservers();
 
+        // プレイヤーの死亡監視イベントを登録
+        SetupPlayerObserver();
+
         // ゲーム開始時のカメラ初期化を待ってから1秒間の操作不能制御を開始
         StartCoroutine(StartPlayerLockRoutine());
     }
@@ -205,6 +208,45 @@ public class SInGameManagerBase : SGameManagerBase
         {
             OnGameClear();
         }
+    }
+
+    private void SetupPlayerObserver()
+    {
+        HHelth playerHealth = null;
+
+        if (m_playerTank != null)
+        {
+            Debug.Log("m_playerTankがからです");
+            playerHealth = m_playerTank.GetComponent<HHelth>();
+        }
+
+        // TankMovement と同じオブジェクトに無ければシーン上から検索
+        if (playerHealth == null)
+        {
+            Debug.Log("playerHealthがからです");
+            playerHealth = FindFirstObjectByType<HHelth>();
+        }
+
+        if (playerHealth == null)
+        {
+            Debug.Log("playerHealthがからなのでreturnしました");
+            return;
+        }
+        // HHelthを書き換える代わりに、監視用コンポーネントを動的にアタッチする
+        var observer = playerHealth.gameObject.AddComponent<PlayerDeathObserver>();
+        observer.Setup(playerHealth);
+        observer.OnDiedAction += OnPlayerDied;
+    }
+
+    /// <summary>
+    /// プレイヤーの体力が0になった瞬間だけ呼ばれる処理
+    /// </summary>
+    private void OnPlayerDied()
+    {
+        Debug.Log("プレイヤーが死にました");
+        // すでにクリア / ゲームオーバー演出中なら弾く
+        if (m_isGameEnded) return;
+        OnGameOver();
     }
 
     // ==========================================
@@ -386,6 +428,35 @@ public class SInGameManagerBase : SGameManagerBase
         private void OnDestroy()
         {
             OnDestroyedAction?.Invoke();
+        }
+    }
+
+    // ==========================================
+    // プレイヤーの死亡（HHelth.OnDie）を検知する内部ヘルパークラス
+    // ==========================================
+    private class PlayerDeathObserver : MonoBehaviour
+    {
+        public System.Action OnDiedAction;
+
+        private HHelth m_health;
+
+        public void Setup(HHelth health)
+        {
+            m_health = health;
+            m_health.OnDie += HandleDie;
+        }
+
+        private void HandleDie()
+        {
+            OnDiedAction?.Invoke();
+        }
+
+        private void OnDestroy()
+        {
+            if (m_health != null)
+            {
+                m_health.OnDie -= HandleDie;
+            }
         }
     }
 }
