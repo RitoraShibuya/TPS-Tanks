@@ -123,6 +123,12 @@ public class TankMovement : MonoBehaviour
         {
             health = GetComponent<HHelth>();
         }
+
+        // ステージにHHelthが付いていない場合でも被弾できるように追加する
+        if (health == null)
+        {
+            health = gameObject.AddComponent<HHelth>();
+        }
     }
 
     private void OnEnable()
@@ -155,8 +161,12 @@ public class TankMovement : MonoBehaviour
     {
         Debug.Log("Playerが死亡した！");
 
-        // Player固有の死亡処理
-        // 例：操作停止、死亡UI表示、アニメーション再生
+        // ステージのゲームマネージャーにゲームオーバーを通知
+        SInGameManagerBase gameManager = FindFirstObjectByType<SInGameManagerBase>();
+        if (gameManager != null)
+        {
+            gameManager.OnGameOver();
+        }
     }
 
     void Start()
@@ -405,11 +415,19 @@ public class TankMovement : MonoBehaviour
         {
             float attackPower = 10f; // プレイヤーの攻撃力
 
+<<<<<<< HEAD
             sharedBullet.Launch(
                 firePosition.forward,
                 bulletFlightSpeed,
                 attackPower,
                 gameObject.tag
+=======
+            projectile.Launch(
+                aimPoint,
+                bulletStraightDistance,
+                bulletFlightSpeed,
+                transform
+>>>>>>> Holy
             );
         }
         else

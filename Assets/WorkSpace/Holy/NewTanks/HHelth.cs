@@ -3,10 +3,14 @@ using UnityEngine;
 
 public class HHelth : MonoBehaviour
 {
+<<<<<<< HEAD
     [Header("ダメージ対象のタグ（相手の弾のタグなど）")]
     [SerializeField] private string targetTag = "Enemy";
 
+=======
+>>>>>>> Holy
     [Header("体力")]
+    [Tooltip("HP：弾が何発当たったら死亡するか")]
     [SerializeField] private int health = 3;
 
     // 死亡イベント
@@ -14,12 +18,11 @@ public class HHelth : MonoBehaviour
 
     private bool isDead = false;
 
-    public bool IsTarget(GameObject target)
-    {
-        return target.CompareTag(targetTag);
-    }
+    public int Health => health;
+    public bool IsDead => isDead;
 
     /// <summary>
+<<<<<<< HEAD
     /// 弾側から呼び出す被ダメージ処理
     /// </summary>
     public void TakeDamage(int damage)
@@ -27,6 +30,19 @@ public class HHelth : MonoBehaviour
         if (isDead) return;
 
         health -= damage;
+=======
+    /// 被弾処理（敵の弾から呼ばれる。1発につき体力を1減らす）
+    /// </summary>
+    public void TakeDamage()
+    {
+        if (isDead)
+        {
+            return;
+        }
+
+        health--;
+
+>>>>>>> Holy
         Debug.Log(gameObject.name + " 残り体力: " + health);
 
         if (health <= 0)

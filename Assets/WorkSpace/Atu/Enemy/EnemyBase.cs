@@ -6,29 +6,31 @@ public abstract class EnemyBase : MonoBehaviour
     [System.Serializable]
     public class Stats
     {
-        public float maxHp = 100f;
-        public float currentHp = 100f;
-        public float attackPower = 10f;
+        [Tooltip("HP：弾が何発当たったら破壊されるか")]
+        public int maxHitCount = 3;
     }
 
-    [Header("�G�̊�{�X�e�[�^�X")]
+    [Header("敵の基本ステータス")]
     [SerializeField] protected Stats statsData = new Stats();
 
-    [Header("�^�[�Q�b�g�ݒ�")]
+    [Header("ターゲット設定")]
     [SerializeField] protected Transform target;
     [SerializeField] protected string playerTag = "Player";
 
 
     //[SerializeField] private HHelth health;
 
-    public float CurrentHp => statsData.currentHp;
-    public float MaxHp => statsData.maxHp;
+    // 残りHP（あと何発耐えられるか）
+    private int currentHp;
+
+    public int CurrentHp => currentHp;
+    public int MaxHp => statsData.maxHitCount;
 
     protected virtual void Awake()
     {
-        statsData.currentHp = statsData.maxHp;
+        currentHp = statsData.maxHitCount;
 
-        // Player�^�O�̃I�u�W�F�N�g���������o���^�[�Q�b�g�ɐݒ�
+        // Playerタグのオブジェクトを自動検出しターゲットに設定
         if (target == null)
         {
             GameObject playerObj = GameObject.FindGameObjectWithTag(playerTag);
@@ -42,6 +44,100 @@ public abstract class EnemyBase : MonoBehaviour
         //{
         //    TankHealth = GetComponent<HHelth>();
         //}
+
+        EnsureCollider();
+    }
+
+    /// <summary>
+    /// コライダーが無いと弾が当たらないため、見た目の大きさに合わせたBoxColliderを自動で追加する
+    /// （FBXをそのまま配置した敵用の保険。正式にはInspectorでコライダーを付けること）
+    /// </summary>
+    private void EnsureCollider()
+    {
+        if (GetComponentInChildren<Collider>() != null) return;
+
+        Renderer[] renderers = GetComponentsInChildren<Renderer>();
+        if (renderers.Length == 0) return;
+
+        // 各Rendererのローカル境界の8頂点を、この敵のローカル空間にまとめる
+        Bounds localBounds = new Bounds();
+        bool initialized = false;
+
+        foreach (Renderer r in renderers)
+        {
+            Bounds b = r.localBounds;
+            for (int i = 0; i < 8; i++)
+            {
+                Vector3 corner = b.center + Vector3.Scale(b.extents, new Vector3(
+                    (i & 1) == 0 ? -1f : 1f,
+                    (i & 2) == 0 ? -1f : 1f,
+                    (i & 4) == 0 ? -1f : 1f));
+
+                Vector3 point = transform.InverseTransformPoint(r.transform.TransformPoint(corner));
+
+                if (!initialized)
+                {
+                    localBounds = new Bounds(point, Vector3.zero);
+                    initialized = true;
+                }
+                else
+                {
+                    localBounds.Encapsulate(point);
+                }
+            }
+        }
+
+        BoxCollider box = gameObject.AddComponent<BoxCollider>();
+        box.center = localBounds.center;
+        box.size = localBounds.size;
+
+        Debug.LogWarning($"[{gameObject.name}] コライダーが無いため BoxCollider を自動追加しました。");
+    }
+
+    /// <summary>
+    /// 弾の狙い位置（ターゲットのコライダー全体の中心）を返す
+    /// ※target.position は足元にあることが多いため、そのまま狙うと足元に飛んでしまう
+    /// </summary>
+    protected Vector3 GetTargetAimPoint()
+    {
+        if (target == null) return Vector3.zero;
+
+        Bounds bounds = new Bounds();
+        bool initialized = false;
+
+        foreach (Collider col in target.GetComponentsInChildren<Collider>())
+        {
+            if (col.isTrigger || !col.enabled) continue;
+
+            if (!initialized)
+            {
+                bounds = col.bounds;
+                initialized = true;
+            }
+            else
+            {
+                bounds.Encapsulate(col.bounds);
+            }
+        }
+
+        // コライダーが無ければ見た目（Renderer）の中心を使う
+        if (!initialized)
+        {
+            foreach (Renderer r in target.GetComponentsInChildren<Renderer>())
+            {
+                if (!initialized)
+                {
+                    bounds = r.bounds;
+                    initialized = true;
+                }
+                else
+                {
+                    bounds.Encapsulate(r.bounds);
+                }
+            }
+        }
+
+        return initialized ? bounds.center : target.position;
     }
 
     //private void OnEnable()
@@ -62,25 +158,28 @@ public abstract class EnemyBase : MonoBehaviour
 
 
     /// <summary>
-    /// ��_���[�W����
+    /// 被弾処理（1発につきHPを1減らす）
     /// </summary>
-    public virtual void TakeDamage(float amount)
+    public virtual void TakeDamage()
     {
-        statsData.currentHp -= amount;
-        Debug.Log($"[{gameObject.name}] ��_���[�W: {amount} / �c��HP: {statsData.currentHp}");
+        // 破壊済み（Destroy待ち）なら何もしない
+        if (currentHp <= 0) return;
 
-        if (statsData.currentHp <= 0)
+        currentHp--;
+        Debug.Log($"[{gameObject.name}] 被弾 / 残りHP: {currentHp}");
+
+        if (currentHp <= 0)
         {
             Die();
-                    }
+        }
     }
 
     /// <summary>
-    /// ���S�E�j������
+    /// 死亡・破棄処理
     /// </summary>
     protected virtual void Die()
     {
-        Debug.Log($"[{gameObject.name}] �j�󂳂�܂����B");
+        Debug.Log($"[{gameObject.name}] 破壊されました。");
         Destroy(gameObject);
     }
 }

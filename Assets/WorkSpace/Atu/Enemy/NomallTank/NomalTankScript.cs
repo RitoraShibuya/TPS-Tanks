@@ -305,14 +305,14 @@ public class EnemyTankController : EnemyBase
     {
         if (muzzleTransform == null || bulletPrefab == null || target == null) return;
 
-        Vector3 shootDirection = (target.position - muzzleTransform.position).normalized;
+        Vector3 shootDirection = (GetTargetAimPoint() - muzzleTransform.position).normalized;
         Quaternion bulletRotation = Quaternion.LookRotation(shootDirection);
 
         GameObject bulletObj = Instantiate(bulletPrefab, muzzleTransform.position, bulletRotation);
 
         if (bulletObj.TryGetComponent(out SharedBullet bullet))
         {
-            bullet.Launch(shootDirection, bulletSpeed, statsData.attackPower, gameObject.tag);
+            bullet.Launch(shootDirection, bulletSpeed, gameObject);
         }
     }
 
