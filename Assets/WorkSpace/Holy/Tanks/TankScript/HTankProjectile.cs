@@ -15,11 +15,15 @@ public class TankProjectile : MonoBehaviour
 
     private Rigidbody rb;
 
+    // 発射した戦車（自分の弾で自分に当たらないようにする）
+    private Transform owner;
+
     private float straightFlightDistance;
     private float straightFlightTime;
     private float flightElapsedTime;
 
     private bool isFalling;
+    private bool hasHit;
 
 
     private void Awake()
@@ -44,8 +48,10 @@ public class TankProjectile : MonoBehaviour
     public void Launch(
         Vector3 aimPoint,
         float straightDistance,
-        float speed)
+        float speed,
+        Transform shooter = null)
     {
+        owner = shooter;
         straightFlightDistance = straightDistance;
         flightSpeed = speed;
 
@@ -112,13 +118,37 @@ public class TankProjectile : MonoBehaviour
 
     private void OnCollisionEnter(Collision collision)
     {
-        Destroy(gameObject);
+        Impact(collision.collider);
     }
 
     private void OnTriggerEnter(Collider other)
     {
-        Destroy(gameObject);
+        Impact(other);
     }
 
-    
+    private void Impact(Collider other)
+    {
+        // 同じフレームで複数のコライダーに当たっても1回だけ処理する
+        if (hasHit)
+        {
+            return;
+        }
+
+        // 自分の戦車は無視
+        if (owner != null && other.transform.IsChildOf(owner))
+        {
+            return;
+        }
+
+        hasHit = true;
+
+        // 敵に当たったらHPを1減らす
+        EnemyBase enemy = other.GetComponentInParent<EnemyBase>();
+        if (enemy != null)
+        {
+            enemy.TakeDamage();
+        }
+
+        Destroy(gameObject);
+    }
 }
