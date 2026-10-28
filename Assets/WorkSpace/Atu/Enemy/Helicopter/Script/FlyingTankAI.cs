@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.AI;
 
+[RequireComponent(typeof(NavMeshAgent))]
 public class FlyingTankAI : EnemyBase
 {
     public enum ModelForwardAxis { Forward, Right, Left, Back }
@@ -36,7 +38,7 @@ public class FlyingTankAI : EnemyBase
     [SerializeField] private float barrelRotationSpeed = 90f; // 砲身の上下旋回速度
     [SerializeField] private float minBarrelPitch = -10f;     // 砲身の上限角度（上向き）
     [Tooltip("砲身が下に向ける最大角度（例: 60度に設定すると、本体20度+砲身60度＝最大80度まで下を向く）")]
-    [SerializeField] private float maxBarrelPitch = 60f;      // ★角度制限を緩和
+    [SerializeField] private float maxBarrelPitch = 60f;
 
     [Header("WayPoint（巡回）設定")]
     [SerializeField] private List<Transform> waypoints = new List<Transform>();
@@ -51,7 +53,7 @@ public class FlyingTankAI : EnemyBase
     [Header("射撃パラメータ")]
     [SerializeField] private GameObject bulletPrefab;
     [SerializeField] private float bulletSpeed = 35f;
-    [SerializeField] private float attackRange = 25f;       // ★射撃範囲を広めに設定推奨
+    [SerializeField] private float attackRange = 25f;
     [SerializeField] private float fireRate = 1.2f;
 
     [Header("遮蔽判定設定")]
@@ -70,6 +72,9 @@ public class FlyingTankAI : EnemyBase
     // 検知フラグ
     private bool isPlayerDetected = false;
 
+    // NavMeshAgent参照
+    private NavMeshAgent agent;
+
     protected override void Awake()
     {
         base.Awake();
@@ -77,6 +82,16 @@ public class FlyingTankAI : EnemyBase
         if (obstacleLayer.value == 0)
         {
             obstacleLayer = LayerMask.GetMask("Default");
+        }
+
+        agent = GetComponent<NavMeshAgent>();
+        if (agent != null)
+        {
+            agent.speed = moveSpeed;
+            agent.angularSpeed = rotationSpeed * 50f;
+            agent.baseOffset = flyHeight;
+            agent.updateRotation = false;
+            agent.stoppingDistance = 0.5f;
         }
     }
 
@@ -94,7 +109,6 @@ public class FlyingTankAI : EnemyBase
         // --- 行動分岐 ---
         if (isPlayerDetected && target != null)
         {
-            // ★ 高度（Y軸）を除外した「水平距離」で計算
             Vector3 selfPosFlat = new Vector3(transform.position.x, 0f, transform.position.z);
             Vector3 targetPosFlat = new Vector3(target.position.x, 0f, target.position.z);
             float horizontalDistance = Vector3.Distance(selfPosFlat, targetPosFlat);
@@ -102,15 +116,29 @@ public class FlyingTankAI : EnemyBase
             // ターゲット捕捉時は【常に照準（AimAtTarget）を合わせ続ける】
             AimAtTarget();
 
-            // 攻撃範囲外ならターゲット上空へ移動（照準しながら移動）
+            // 攻撃範囲外ならターゲットへ向かってNavMesh移動
             if (horizontalDistance > attackRange)
             {
-                Vector3 targetPosition = target.position + Vector3.up * flyHeight;
-                MoveToPositionOnly(targetPosition);
+                if (agent != null && agent.isOnNavMesh)
+                {
+                    agent.isStopped = false; // ★移動再開
+                }
+                MoveToPositionOnly(target.position);
+            }
+            else
+            {
+                // ★ 攻撃範囲内なら明確に停止
+                if (agent != null && agent.isOnNavMesh)
+                {
+                    agent.isStopped = true;
+                    if (agent.hasPath) agent.ResetPath();
+                }
             }
 
             // 攻撃範囲内かつ視線（Raycast）が通っているなら射撃チェック
-            if (horizontalDistance <= attackRange && HasLineOfSight())
+            bool hasLineOfSight = HasLineOfSight();
+
+            if (horizontalDistance <= attackRange && hasLineOfSight)
             {
                 if (isTargetInAngleLimit && Time.time >= nextFireTime)
                 {
@@ -128,29 +156,16 @@ public class FlyingTankAI : EnemyBase
         }
     }
 
-    /// <summary>
-    /// 移動処理専用（向き変更はAimAtTargetに任せる）
-    /// </summary>
     private void MoveToPositionOnly(Vector3 destination)
     {
-        transform.position = Vector3.MoveTowards(
-            transform.position,
-            destination,
-            moveSpeed * Time.deltaTime
-        );
+        if (agent != null && agent.isOnNavMesh)
+        {
+            agent.SetDestination(destination);
+        }
     }
 
-    /// <summary>
-    /// 巡回用移動（進行方向に向く）
-    /// </summary>
     private void MoveToPatrolPosition(Vector3 destination)
     {
-        transform.position = Vector3.MoveTowards(
-            transform.position,
-            destination,
-            moveSpeed * Time.deltaTime
-        );
-
         if (barrelTransform != null)
         {
             barrelTransform.localRotation = Quaternion.RotateTowards(
@@ -160,27 +175,30 @@ public class FlyingTankAI : EnemyBase
             );
         }
 
-        Vector3 moveDirection = (destination - transform.position).normalized;
-        moveDirection.y = 0f;
-
-        if (moveDirection != Vector3.zero)
+        if (agent != null && agent.isOnNavMesh)
         {
-            Quaternion targetRot = Quaternion.LookRotation(moveDirection);
+            agent.isStopped = false;
+            agent.SetDestination(destination);
 
-            switch (modelForwardAxis)
+            Vector3 moveDirection = agent.velocity.normalized;
+            moveDirection.y = 0f;
+
+            if (moveDirection.sqrMagnitude > 0.01f)
             {
-                case ModelForwardAxis.Right: targetRot *= Quaternion.Euler(0, -90, 0); break;
-                case ModelForwardAxis.Left: targetRot *= Quaternion.Euler(0, 90, 0); break;
-                case ModelForwardAxis.Back: targetRot *= Quaternion.Euler(0, 180, 0); break;
-            }
+                Quaternion targetRot = Quaternion.LookRotation(moveDirection);
 
-            transform.rotation = Quaternion.Slerp(transform.rotation, targetRot, Time.deltaTime * rotationSpeed);
+                switch (modelForwardAxis)
+                {
+                    case ModelForwardAxis.Right: targetRot *= Quaternion.Euler(0, -90, 0); break;
+                    case ModelForwardAxis.Left: targetRot *= Quaternion.Euler(0, 90, 0); break;
+                    case ModelForwardAxis.Back: targetRot *= Quaternion.Euler(0, 180, 0); break;
+                }
+
+                transform.rotation = Quaternion.Slerp(transform.rotation, targetRot, Time.deltaTime * rotationSpeed);
+            }
         }
     }
 
-    /// <summary>
-    /// 機体本体（前傾Pitch）と砲身（Barrel）の角度制限付き連動照準
-    /// </summary>
     private void AimAtTarget()
     {
         if (target == null) return;
@@ -218,16 +236,10 @@ public class FlyingTankAI : EnemyBase
             Vector3 relativeTargetDir = (target.position - aimPos).normalized;
 
             Vector3 localDir = transform.InverseTransformDirection(relativeTargetDir);
-            float targetBarrelPitch = -Mathf.Atan2(localDir.y, Mathf.Abs(localDir.z)) * Mathf.Rad2Deg;
+            float targetBarrelPitch = -Mathf.Atan2(localDir.y, Mathf.Sqrt(localDir.x * localDir.x + localDir.z * localDir.z)) * Mathf.Rad2Deg;
 
-            if (targetBarrelPitch > maxBarrelPitch || targetBarrelPitch < minBarrelPitch)
-            {
-                isTargetInAngleLimit = false;
-            }
-            else
-            {
-                isTargetInAngleLimit = true;
-            }
+            // ★ 修正: 角度の制限判定を論理式で確実に計算
+            isTargetInAngleLimit = (targetBarrelPitch >= minBarrelPitch && targetBarrelPitch <= maxBarrelPitch);
 
             float clampedBarrelPitch = Mathf.Clamp(targetBarrelPitch, minBarrelPitch, maxBarrelPitch);
 
@@ -289,7 +301,10 @@ public class FlyingTankAI : EnemyBase
         Vector3 dir = (targetCenterPos - origin).normalized;
         float dist = Vector3.Distance(origin, targetCenterPos);
 
-        RaycastHit[] hits = Physics.RaycastAll(origin, dir, dist, obstacleLayer);
+        // ★ 判定用オフセット（自身のコライダーとの即時接触を防止）
+        Vector3 rayStart = origin + dir * 0.2f;
+
+        RaycastHit[] hits = Physics.RaycastAll(rayStart, dir, Mathf.Max(0f, dist - 0.2f), obstacleLayer);
 
         foreach (var hit in hits)
         {
@@ -346,10 +361,9 @@ public class FlyingTankAI : EnemyBase
             return;
         }
 
-        Vector3 destination = currentPoint.position + Vector3.up * flyHeight;
-        MoveToPatrolPosition(destination);
+        MoveToPatrolPosition(currentPoint.position);
 
-        if (Vector3.Distance(transform.position, destination) <= waypointArriveDistance)
+        if (!agent.pathPending && agent.remainingDistance <= waypointArriveDistance)
         {
             isWaiting = true;
         }

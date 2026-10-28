@@ -33,11 +33,47 @@ public class FixedTurret : EnemyBase
     [SerializeField] private float fireRate = 1.5f;         // 発射間隔（秒）
     [SerializeField] private LayerMask obstacleLayer = ~0;
 
+    [Header("効果音設定 (追加)")]
+    [Tooltip("砲塔旋回音（旋回中のみループ再生するClip）")]
+    [SerializeField] private AudioClip turretRotateClip;
+
     private float nextFireTime;
+
+    // 砲台個別の3D旋回音再生用 AudioSource
+    private AudioSource turretAudioSource;
+
+    private void Awake()
+    {
+        SetupAudioSource();
+    }
+
+    /// <summary>
+    /// 敵個別の3Dサウンド用 AudioSource 設定
+    /// </summary>
+    private void SetupAudioSource()
+    {
+        turretAudioSource = gameObject.AddComponent<AudioSource>();
+        turretAudioSource.loop = true;
+        turretAudioSource.playOnAwake = false;
+        turretAudioSource.spatialBlend = 1.0f; // 3Dサウンド（距離感の再現）
+        turretAudioSource.minDistance = 3f;
+        turretAudioSource.maxDistance = 30f;
+
+        if (turretRotateClip != null)
+        {
+            turretAudioSource.clip = turretRotateClip;
+        }
+    }
 
     private void Update()
     {
-        if (target == null) return;
+        UpdateSoundVolume();
+
+        if (target == null)
+        {
+            ControlTurretSound(false);
+            return;
+        }
 
         // 視界（距離・モデル正面軸の視野角・壁遮蔽）内に入っているか判定
         if (IsTargetInSight())
@@ -58,6 +94,25 @@ public class FixedTurret : EnemyBase
                     }
                 }
             }
+            else
+            {
+                ControlTurretSound(false);
+            }
+        }
+        else
+        {
+            ControlTurretSound(false);
+        }
+    }
+
+    /// <summary>
+    /// SSoundManagerのSE音量変更に追従
+    /// </summary>
+    private void UpdateSoundVolume()
+    {
+        if (SSoundManager.Instance != null && turretAudioSource != null)
+        {
+            turretAudioSource.volume = SSoundManager.Instance.seVolume;
         }
     }
 
@@ -117,6 +172,8 @@ public class FixedTurret : EnemyBase
     {
         if (target == null) return;
 
+        bool isTurretRotating = false;
+
         // 1. 砲塔（Turret）の水平旋回（Yaw）
         if (turretTransform != null)
         {
@@ -133,6 +190,12 @@ public class FixedTurret : EnemyBase
                     case ModelForwardAxis.Right: lookRot *= Quaternion.Euler(0, -90, 0); break;
                     case ModelForwardAxis.Left: lookRot *= Quaternion.Euler(0, 90, 0); break;
                     case ModelForwardAxis.Back: lookRot *= Quaternion.Euler(0, 180, 0); break;
+                }
+
+                float angleDiff = Quaternion.Angle(turretTransform.rotation, lookRot);
+                if (angleDiff > 0.1f)
+                {
+                    isTurretRotating = true;
                 }
 
                 turretTransform.rotation = Quaternion.RotateTowards(
@@ -165,11 +228,44 @@ public class FixedTurret : EnemyBase
             targetAngle = Mathf.Clamp(targetAngle, minGunPitch, maxGunPitch);
 
             Quaternion targetBarrelRot = Quaternion.Euler(targetAngle, 0f, 0f);
+
+            float pitchDiff = Quaternion.Angle(barrelTransform.localRotation, targetBarrelRot);
+            if (pitchDiff > 0.1f)
+            {
+                isTurretRotating = true;
+            }
+
             barrelTransform.localRotation = Quaternion.RotateTowards(
                 barrelTransform.localRotation,
                 targetBarrelRot,
                 pitchRotationSpeed * Time.deltaTime
             );
+        }
+
+        // 旋回中のみサウンドを再生
+        ControlTurretSound(isTurretRotating);
+    }
+
+    /// <summary>
+    /// 砲塔旋回音の再生制御
+    /// </summary>
+    private void ControlTurretSound(bool isRotating)
+    {
+        if (turretAudioSource == null || turretRotateClip == null) return;
+
+        if (isRotating)
+        {
+            if (!turretAudioSource.isPlaying)
+            {
+                turretAudioSource.Play();
+            }
+        }
+        else
+        {
+            if (turretAudioSource.isPlaying)
+            {
+                turretAudioSource.Stop();
+            }
         }
     }
 
@@ -181,7 +277,7 @@ public class FixedTurret : EnemyBase
         if (target == null) return false;
 
         Transform checkTransform = muzzleTransform != null ? muzzleTransform :
-                                  (turretTransform != null ? turretTransform : transform);
+                                   (turretTransform != null ? turretTransform : transform);
 
         Vector3 direction = (target.position - checkTransform.position);
         direction.y = 0f;
@@ -221,9 +317,29 @@ public class FixedTurret : EnemyBase
 
         GameObject bulletObj = Instantiate(bulletPrefab, muzzleTransform.position, bulletRotation);
 
+        // 発射音の再生 (SSoundManager)
+        if (SSoundManager.Instance != null)
+        {
+            SSoundManager.Instance.PlaySE_Shoot();
+        }
+
         if (bulletObj.TryGetComponent(out SharedBullet bullet))
         {
             bullet.Launch(shootDirection, bulletSpeed, gameObject);
+        }
+    }
+
+    private void OnDestroy()
+    {
+        // 砲台破壊時にSE再生 (SSoundManager)
+        if (SSoundManager.Instance != null)
+        {
+            SSoundManager.Instance.PlaySE_TankDestroy();
+        }
+
+        if (turretAudioSource != null && turretAudioSource.isPlaying)
+        {
+            turretAudioSource.Stop();
         }
     }
 
