@@ -339,32 +339,32 @@ public class SInGameManagerBase : SGameManagerBase
     // デバッグ処理
     // ==========================================
 
-    private void OnGUI()
-    {
-        GUI.enabled = !m_isLoading && !m_isGameEnded;
+    //private void OnGUI()
+    //{
+    //    GUI.enabled = !m_isLoading && !m_isGameEnded;
 
-        GUILayout.BeginArea(new Rect(20, 20, 200, 200));
+    //    GUILayout.BeginArea(new Rect(20, 20, 200, 200));
 
-        if (GUILayout.Button("【DEBUG】Game Clear", GUILayout.Height(50)))
-        {
-            Debug.Log("[Debug] GUIボタンから GameClear を実行しました");
-            ForceGameClear();
-        }
+    //    if (GUILayout.Button("【DEBUG】Game Clear", GUILayout.Height(50)))
+    //    {
+    //        Debug.Log("[Debug] GUIボタンから GameClear を実行しました");
+    //        ForceGameClear();
+    //    }
 
-        GUILayout.Space(10);
+    //    GUILayout.Space(10);
 
-        if (GUILayout.Button("【DEBUG】Game Over", GUILayout.Height(50)))
-        {
-            Debug.Log("[Debug] GUIボタンから GameOver を実行しました");
-            ForceGameOver();
-        }
+    //    if (GUILayout.Button("【DEBUG】Game Over", GUILayout.Height(50)))
+    //    {
+    //        Debug.Log("[Debug] GUIボタンから GameOver を実行しました");
+    //        ForceGameOver();
+    //    }
 
-        GUILayout.EndArea();
+    //    GUILayout.EndArea();
 
-        GUI.enabled = true;
-    }
+    //    GUI.enabled = true;
+    //}
 
-    [ContextMenu("Debug: Force Game Clear")]
+    //[ContextMenu("Debug: Force Game Clear")]
     public void ForceGameClear()
     {
         OnGameClear();
