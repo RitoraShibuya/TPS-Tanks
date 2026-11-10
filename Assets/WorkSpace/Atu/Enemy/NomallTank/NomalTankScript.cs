@@ -1,3 +1,4 @@
+
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
@@ -41,6 +42,10 @@ public class EnemyTankController : EnemyBase
     [Header("遮蔽判定設定")]
     [SerializeField] private LayerMask obstacleLayer;
 
+    [Header("音声設定")]
+    [SerializeField] private float movementSoundThreshold = 0.2f;
+    [SerializeField] private float turretSoundAngleThreshold = 0.5f;
+
     private NavMeshAgent agent;
     private float nextFireTime;
 
@@ -51,9 +56,14 @@ public class EnemyTankController : EnemyBase
 
     private bool isPlayerDetected = false;
 
+    // 音声再生状態
+    private bool isEngineSoundPlaying = false;
+    private bool isTurretSoundPlaying = false;
+
     protected override void Awake()
     {
         base.Awake();
+
         agent = GetComponent<NavMeshAgent>();
 
         if (agent != null)
@@ -61,25 +71,33 @@ public class EnemyTankController : EnemyBase
             agent.speed = moveSpeed;
             agent.angularSpeed = bodyRotationSpeed;
             agent.stoppingDistance = 0.5f;
-            // 自前でモデルの軸補正回転を行うため、Agentの自動回転をオフにする
+
+            // 自前でモデルの軸補正回転を行う
             agent.updateRotation = false;
         }
     }
 
     private void Update()
     {
-        if (agent == null || !agent.isActiveAndEnabled || !agent.isOnNavMesh) return;
+        if (agent == null || !agent.isActiveAndEnabled || !agent.isOnNavMesh)
+        {
+            StopAllLoopSounds();
+            return;
+        }
 
-        // NavMeshAgentの移動方向に合わせて、軸補正を行いながら滑らかに回転させる
+        // 本体の回転
         UpdateBodyRotation();
 
-        // 1. ターゲットが視界に入っているかチェック
+        // ターゲットの索敵
         if (!isPlayerDetected && IsTargetInSight())
         {
             isPlayerDetected = true;
         }
 
-        // --- 行動分岐 ---
+        // 今フレームの砲塔旋回状態
+        bool turretIsRotating = false;
+
+        // 行動分岐
         if (isPlayerDetected && target != null)
         {
             float distance = Vector3.Distance(transform.position, target.position);
@@ -87,7 +105,8 @@ public class EnemyTankController : EnemyBase
             if (distance <= attackRange && HasLineOfSight())
             {
                 agent.isStopped = true;
-                AimTurret();
+
+                turretIsRotating = AimTurret();
 
                 if (Time.time >= nextFireTime)
                 {
@@ -99,7 +118,8 @@ public class EnemyTankController : EnemyBase
             {
                 agent.isStopped = false;
                 agent.SetDestination(target.position);
-                AimTurret();
+
+                turretIsRotating = AimTurret();
             }
         }
         else
@@ -114,14 +134,99 @@ public class EnemyTankController : EnemyBase
                 agent.isStopped = true;
             }
         }
+
+        // エンジン音の制御
+        UpdateEngineSound();
+
+        // 砲塔旋回音の制御
+        UpdateTurretSound(turretIsRotating);
     }
 
     /// <summary>
-    /// NavMeshAgentの進行方向（desiredVelocity）に対してモデル軸補正をかけて回転させる
+    /// エンジン音の再生・停止
+    /// </summary>
+    private void UpdateEngineSound()
+    {
+        bool isMoving =
+            !agent.isStopped &&
+            agent.velocity.sqrMagnitude >
+            movementSoundThreshold * movementSoundThreshold;
+
+        if (isMoving && !isEngineSoundPlaying)
+        {
+            if (SSoundManager.Instance != null)
+            {
+                SSoundManager.Instance.PlaySE_TankMoveEngine_Start();
+                isEngineSoundPlaying = true;
+            }
+        }
+        else if (!isMoving && isEngineSoundPlaying)
+        {
+            if (SSoundManager.Instance != null)
+            {
+                SSoundManager.Instance.PlaySE_TankMoveEngine_End();
+            }
+
+            isEngineSoundPlaying = false;
+        }
+    }
+
+    /// <summary>
+    /// 砲塔旋回音の再生・停止
+    /// </summary>
+    private void UpdateTurretSound(bool isRotating)
+    {
+        if (isRotating && !isTurretSoundPlaying)
+        {
+            if (SSoundManager.Instance != null)
+            {
+                SSoundManager.Instance.PlaySE_TurretRotate_Start();
+                isTurretSoundPlaying = true;
+            }
+        }
+        else if (!isRotating && isTurretSoundPlaying)
+        {
+            if (SSoundManager.Instance != null)
+            {
+                SSoundManager.Instance.PlaySE_TurretRotate_End();
+            }
+
+            isTurretSoundPlaying = false;
+        }
+    }
+
+    /// <summary>
+    /// すべてのループ音を停止
+    /// </summary>
+    private void StopAllLoopSounds()
+    {
+        if (SSoundManager.Instance != null)
+        {
+            if (isEngineSoundPlaying)
+            {
+                SSoundManager.Instance.PlaySE_TankMoveEngine_End();
+            }
+
+            if (isTurretSoundPlaying)
+            {
+                SSoundManager.Instance.PlaySE_TurretRotate_End();
+            }
+        }
+
+        isEngineSoundPlaying = false;
+        isTurretSoundPlaying = false;
+    }
+
+    private void OnDisable()
+    {
+        StopAllLoopSounds();
+    }
+
+    /// <summary>
+    /// NavMeshAgentの進行方向に合わせて回転
     /// </summary>
     private void UpdateBodyRotation()
     {
-        // 移動中の場合（移動速度ベクトルが存在する場合）
         if (agent.desiredVelocity.sqrMagnitude > 0.1f)
         {
             Vector3 moveDir = agent.desiredVelocity.normalized;
@@ -131,12 +236,19 @@ public class EnemyTankController : EnemyBase
             {
                 Quaternion targetRot = Quaternion.LookRotation(moveDir);
 
-                // モデルの正面軸に合わせて回転補正
                 switch (modelForwardAxis)
                 {
-                    case ModelForwardAxis.Right: targetRot *= Quaternion.Euler(0, -90, 0); break;
-                    case ModelForwardAxis.Left: targetRot *= Quaternion.Euler(0, 90, 0); break;
-                    case ModelForwardAxis.Back: targetRot *= Quaternion.Euler(0, 180, 0); break;
+                    case ModelForwardAxis.Right:
+                        targetRot *= Quaternion.Euler(0, -90, 0);
+                        break;
+
+                    case ModelForwardAxis.Left:
+                        targetRot *= Quaternion.Euler(0, 90, 0);
+                        break;
+
+                    case ModelForwardAxis.Back:
+                        targetRot *= Quaternion.Euler(0, 180, 0);
+                        break;
                 }
 
                 transform.rotation = Quaternion.RotateTowards(
@@ -154,6 +266,7 @@ public class EnemyTankController : EnemyBase
 
         Vector3 directionToTarget = target.position - transform.position;
         float distance = directionToTarget.magnitude;
+
         if (distance > sightDistance) return false;
 
         Vector3 horizontalDir = directionToTarget;
@@ -163,6 +276,7 @@ public class EnemyTankController : EnemyBase
         Vector3 forward = GetModelForward(transform);
 
         float angle = Vector3.Angle(forward, horizontalDir);
+
         if (angle > (sightAngle / 2f)) return false;
 
         return HasLineOfSight();
@@ -172,18 +286,31 @@ public class EnemyTankController : EnemyBase
     {
         if (target == null) return false;
 
-        Vector3 rayStartPos = muzzleTransform != null ? muzzleTransform.position : transform.position + Vector3.up * 1f;
+        Vector3 rayStartPos = muzzleTransform != null
+            ? muzzleTransform.position
+            : transform.position + Vector3.up * 1f;
+
         Vector3 targetCenterPos = target.position + Vector3.up * 0.5f;
+
         Vector3 rayDir = (targetCenterPos - rayStartPos).normalized;
         float dist = Vector3.Distance(rayStartPos, targetCenterPos);
 
-        RaycastHit[] hits = Physics.RaycastAll(rayStartPos, rayDir, dist, obstacleLayer);
+        RaycastHit[] hits = Physics.RaycastAll(
+            rayStartPos,
+            rayDir,
+            dist,
+            obstacleLayer
+        );
 
         foreach (var hit in hits)
         {
-            if (hit.transform.IsChildOf(transform) || hit.transform == transform) continue;
+            if (hit.transform.IsChildOf(transform) ||
+                hit.transform == transform)
+                continue;
 
-            if (!hit.transform.IsChildOf(target) && hit.transform != target && !hit.transform.CompareTag(playerTag))
+            if (!hit.transform.IsChildOf(target) &&
+                hit.transform != target &&
+                !hit.transform.CompareTag(playerTag))
             {
                 return false;
             }
@@ -196,20 +323,30 @@ public class EnemyTankController : EnemyBase
     {
         switch (modelForwardAxis)
         {
-            case ModelForwardAxis.Right: return t.right;
-            case ModelForwardAxis.Left: return -t.right;
-            case ModelForwardAxis.Back: return -t.forward;
-            default: return t.forward;
+            case ModelForwardAxis.Right:
+                return t.right;
+
+            case ModelForwardAxis.Left:
+                return -t.right;
+
+            case ModelForwardAxis.Back:
+                return -t.forward;
+
+            default:
+                return t.forward;
         }
     }
 
     private bool HasValidWaypoints()
     {
-        if (waypoints == null || waypoints.Count == 0) return false;
+        if (waypoints == null || waypoints.Count == 0)
+            return false;
+
         foreach (var wp in waypoints)
         {
             if (wp != null) return true;
         }
+
         return false;
     }
 
@@ -218,16 +355,19 @@ public class EnemyTankController : EnemyBase
         if (isWaiting)
         {
             waitTimer += Time.deltaTime;
+
             if (waitTimer >= waypointWaitTime)
             {
                 isWaiting = false;
                 waitTimer = 0f;
                 SetNextWaypoint();
             }
+
             return;
         }
 
         Transform currentPoint = waypoints[currentWaypointIndex];
+
         if (currentPoint == null)
         {
             SetNextWaypoint();
@@ -236,7 +376,8 @@ public class EnemyTankController : EnemyBase
 
         agent.SetDestination(currentPoint.position);
 
-        if (!agent.pathPending && agent.remainingDistance <= waypointArriveDistance)
+        if (!agent.pathPending &&
+            agent.remainingDistance <= waypointArriveDistance)
         {
             isWaiting = true;
         }
@@ -244,18 +385,21 @@ public class EnemyTankController : EnemyBase
 
     private void SetNextWaypoint()
     {
-        if (waypoints == null || waypoints.Count <= 1) return;
+        if (waypoints == null || waypoints.Count <= 1)
+            return;
 
         switch (patrolType)
         {
             case PatrolType.Loop:
-                currentWaypointIndex = (currentWaypointIndex + 1) % waypoints.Count;
+                currentWaypointIndex =
+                    (currentWaypointIndex + 1) % waypoints.Count;
                 break;
 
             case PatrolType.PingPong:
                 if (isPatrolReverse)
                 {
                     currentWaypointIndex--;
+
                     if (currentWaypointIndex <= 0)
                     {
                         currentWaypointIndex = 0;
@@ -265,6 +409,7 @@ public class EnemyTankController : EnemyBase
                 else
                 {
                     currentWaypointIndex++;
+
                     if (currentWaypointIndex >= waypoints.Count - 1)
                     {
                         currentWaypointIndex = waypoints.Count - 1;
@@ -274,55 +419,102 @@ public class EnemyTankController : EnemyBase
                 break;
 
             case PatrolType.Random:
-                currentWaypointIndex = Random.Range(0, waypoints.Count);
+                currentWaypointIndex =
+                    Random.Range(0, waypoints.Count);
                 break;
         }
     }
 
-    private void AimTurret()
+    /// <summary>
+    /// 砲塔をターゲットに向ける
+    /// 戻り値：現在旋回中かどうか
+    /// </summary>
+    private bool AimTurret()
     {
-        if (turretTransform == null || target == null) return;
+        if (turretTransform == null || target == null)
+            return false;
 
-        Vector3 targetDir = (target.position - turretTransform.position).normalized;
-        targetDir.y = 0;
+        Vector3 targetDir =
+            (target.position - turretTransform.position).normalized;
 
-        if (targetDir != Vector3.zero)
+        targetDir.y = 0f;
+
+        if (targetDir == Vector3.zero)
+            return false;
+
+        Quaternion lookRot = Quaternion.LookRotation(targetDir);
+
+        switch (modelForwardAxis)
         {
-            Quaternion lookRot = Quaternion.LookRotation(targetDir);
+            case ModelForwardAxis.Right:
+                lookRot *= Quaternion.Euler(0, -90, 0);
+                break;
 
-            switch (modelForwardAxis)
-            {
-                case ModelForwardAxis.Right: lookRot *= Quaternion.Euler(0, -90, 0); break;
-                case ModelForwardAxis.Left: lookRot *= Quaternion.Euler(0, 90, 0); break;
-                case ModelForwardAxis.Back: lookRot *= Quaternion.Euler(0, 180, 0); break;
-            }
+            case ModelForwardAxis.Left:
+                lookRot *= Quaternion.Euler(0, 90, 0);
+                break;
 
-            turretTransform.rotation = Quaternion.Slerp(turretTransform.rotation, lookRot, Time.deltaTime * 5f);
+            case ModelForwardAxis.Back:
+                lookRot *= Quaternion.Euler(0, 180, 0);
+                break;
         }
+
+        float angle = Quaternion.Angle(
+            turretTransform.rotation,
+            lookRot
+        );
+
+        turretTransform.rotation = Quaternion.Slerp(
+            turretTransform.rotation,
+            lookRot,
+            Time.deltaTime * 5f
+        );
+
+        return angle > turretSoundAngleThreshold;
     }
 
     private void ExecuteShoot()
     {
-        if (muzzleTransform == null || bulletPrefab == null || target == null) return;
+        if (muzzleTransform == null ||
+            bulletPrefab == null ||
+            target == null)
+            return;
 
-        Vector3 shootDirection = (GetTargetAimPoint() - muzzleTransform.position).normalized;
-        Quaternion bulletRotation = Quaternion.LookRotation(shootDirection);
+        Vector3 shootDirection =
+            (GetTargetAimPoint() - muzzleTransform.position).normalized;
 
-        GameObject bulletObj = Instantiate(bulletPrefab, muzzleTransform.position, bulletRotation);
+        Quaternion bulletRotation =
+            Quaternion.LookRotation(shootDirection);
+
+        GameObject bulletObj = Instantiate(
+            bulletPrefab,
+            muzzleTransform.position,
+            bulletRotation
+        );
 
         if (bulletObj.TryGetComponent(out SharedBullet bullet))
         {
             bullet.Launch(shootDirection, bulletSpeed, gameObject);
-            SSoundManager.Instance.PlaySE_Shoot();
+
+            // 射撃音
+            if (SSoundManager.Instance != null)
+            {
+                SSoundManager.Instance.PlaySE_Shoot();
+            }
         }
     }
 
     private void OnDrawGizmosSelected()
     {
         Gizmos.color = Color.yellow;
+
         Vector3 forward = GetModelForward(transform);
-        Vector3 leftRay = Quaternion.Euler(0, -sightAngle / 2f, 0) * forward;
-        Vector3 rightRay = Quaternion.Euler(0, sightAngle / 2f, 0) * forward;
+
+        Vector3 leftRay =
+            Quaternion.Euler(0, -sightAngle / 2f, 0) * forward;
+
+        Vector3 rightRay =
+            Quaternion.Euler(0, sightAngle / 2f, 0) * forward;
 
         Gizmos.DrawRay(transform.position, leftRay * sightDistance);
         Gizmos.DrawRay(transform.position, rightRay * sightDistance);
@@ -334,15 +526,24 @@ public class EnemyTankController : EnemyBase
         if (waypoints != null && waypoints.Count > 0)
         {
             Gizmos.color = Color.cyan;
+
             for (int i = 0; i < waypoints.Count; i++)
             {
                 if (waypoints[i] != null)
                 {
-                    Gizmos.DrawWireSphere(waypoints[i].position, 0.5f);
+                    Gizmos.DrawWireSphere(
+                        waypoints[i].position,
+                        0.5f
+                    );
+
                     int next = (i + 1) % waypoints.Count;
+
                     if (waypoints[next] != null)
                     {
-                        Gizmos.DrawLine(waypoints[i].position, waypoints[next].position);
+                        Gizmos.DrawLine(
+                            waypoints[i].position,
+                            waypoints[next].position
+                        );
                     }
                 }
             }
