@@ -91,6 +91,7 @@ public class FixedTurret : EnemyBase
                     {
                         nextFireTime = Time.time + fireRate;
                         ExecuteShoot();
+                        SSoundManager.Instance.PlaySE_Shoot();
                     }
                 }
             }

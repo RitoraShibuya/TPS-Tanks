@@ -313,6 +313,7 @@ public class EnemyTankController : EnemyBase
         if (bulletObj.TryGetComponent(out SharedBullet bullet))
         {
             bullet.Launch(shootDirection, bulletSpeed, gameObject);
+            SSoundManager.Instance.PlaySE_Shoot();
         }
     }
 
