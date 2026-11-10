@@ -21,7 +21,7 @@ public class SProgressManager : MonoBehaviour
     /// 本編ステージの数（ID 1 ～ SStageCount）。チュートリアルは ID 0
     /// ステージ数を変える時はここだけを変更する
     /// </summary>
-    public const int SStageCount = 4;
+    public const int SStageCount = 3;
 
     // ※進行状況はメモリ上のみで保持している（ゲームを終了するとリセットされる）
 

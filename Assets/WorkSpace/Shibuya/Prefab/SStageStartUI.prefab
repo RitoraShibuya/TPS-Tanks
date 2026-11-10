@@ -35,7 +35,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 465, y: 179}
+  m_SizeDelta: {x: 1000, y: 300}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &7038628566338089118
 CanvasRenderer:
@@ -68,14 +68,14 @@ MonoBehaviour:
   m_text: Start!!
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 93892228ef18b734f80dd55544a8d520, type: 2}
-  m_sharedMaterial: {fileID: 5062818111061401179, guid: 93892228ef18b734f80dd55544a8d520, type: 2}
+  m_sharedMaterial: {fileID: 8420587419700746263, guid: 93892228ef18b734f80dd55544a8d520, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4294967295
-  m_fontColor: {r: 1, g: 1, b: 1, a: 1}
+    rgba: 4278190080
+  m_fontColor: {r: 0, g: 0, b: 0, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -92,13 +92,13 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 36
-  m_fontSizeBase: 36
+  m_fontSize: 150
+  m_fontSizeBase: 150
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
   m_fontSizeMax: 72
-  m_fontStyle: 0
+  m_fontStyle: 1
   m_HorizontalAlignment: 2
   m_VerticalAlignment: 512
   m_textAlignment: 65535
@@ -256,6 +256,8 @@ MonoBehaviour:
   SStageUI: {fileID: 5069831018036756871}
   SStartUI: {fileID: 3367851289174152565}
   SStageText: {fileID: 3197404190418127320}
+  SStageUIDisplayTime: 1.5
+  SStartUIDisplayTime: 0.5
 --- !u!1 &5069831018036756871
 GameObject:
   m_ObjectHideFlags: 0
@@ -291,7 +293,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 592, y: 179}
+  m_SizeDelta: {x: 1000, y: 300}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &4230894141384217510
 CanvasRenderer:
@@ -324,14 +326,14 @@ MonoBehaviour:
   m_text: Stage 0
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 93892228ef18b734f80dd55544a8d520, type: 2}
-  m_sharedMaterial: {fileID: 5062818111061401179, guid: 93892228ef18b734f80dd55544a8d520, type: 2}
+  m_sharedMaterial: {fileID: 8420587419700746263, guid: 93892228ef18b734f80dd55544a8d520, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4294967295
-  m_fontColor: {r: 1, g: 1, b: 1, a: 1}
+    rgba: 4278190080
+  m_fontColor: {r: 0, g: 0, b: 0, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -348,13 +350,13 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 36
-  m_fontSizeBase: 36
+  m_fontSize: 150
+  m_fontSizeBase: 150
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
   m_fontSizeMax: 72
-  m_fontStyle: 0
+  m_fontStyle: 1
   m_HorizontalAlignment: 2
   m_VerticalAlignment: 512
   m_textAlignment: 65535

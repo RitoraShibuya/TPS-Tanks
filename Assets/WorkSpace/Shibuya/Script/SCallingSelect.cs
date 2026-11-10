@@ -1,5 +1,6 @@
 
 using System;
+using System.Collections;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -13,23 +14,33 @@ public class SCallingSelect : MonoBehaviour
     // ステージ選択要求イベント
     public event Action OnCallStageSelect;
 
-    private void Start()
-    {
-        FocusFirstButton();
-    }
-
-    private void OnEnable()
-    {
-        FocusFirstButton();
-    }
-
     /// <summary>
     /// 最初のボタンにフォーカスを設定
     /// </summary>
     public void FocusFirstButton()
     {
-        if (SMainButton == null) return;
+        StartCoroutine(SetInitialFocus());
+    }
 
+    /// <summary>
+    /// 初期フォーカス設定
+    /// </summary>
+    private IEnumerator SetInitialFocus()
+    {
+        // UIの生成・有効化を待つ
+        yield return null;
+
+        if (SMainButton == null)
+        {
+            Debug.LogWarning(
+                "[SCallingSelect] MainButton が設定されていません。");
+            yield break;
+        }
+
+        // Canvasのレイアウトを更新
+        Canvas.ForceUpdateCanvases();
+
+        // EventSystemを取得
         EventSystem es = EventSystem.current;
 
         if (es == null)
@@ -37,14 +48,20 @@ public class SCallingSelect : MonoBehaviour
             es = FindFirstObjectByType<EventSystem>();
         }
 
-        if (es == null) return;
+        if (es == null)
+        {
+            Debug.LogWarning(
+                "[SCallingSelect] EventSystem が見つかりません。");
+            yield break;
+        }
 
+        // ボタンの操作可能状態を確認
         if (!SMainButton.gameObject.activeInHierarchy ||
             !SMainButton.interactable)
         {
             Debug.LogWarning(
                 "[SCallingSelect] メインボタンが操作できません。");
-            return;
+            yield break;
         }
 
         // 現在の選択状態を解除

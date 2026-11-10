@@ -15,7 +15,6 @@ public class SStageSelectButtons : MonoBehaviour
     [SerializeField] private Button SStage4Button;
 
     private Button[] m_stageButtons;
-    private EventSystem m_eventSystem;
 
     // ステージ選択イベント
     public event Action<int> OnStageSelectedEvent;
@@ -29,9 +28,6 @@ public class SStageSelectButtons : MonoBehaviour
             SStage3Button,
             SStage4Button
         };
-
-        // ワールド内の EventSystem を取得
-        FindEventSystem();
     }
 
     private void Start()
@@ -43,28 +39,78 @@ public class SStageSelectButtons : MonoBehaviour
                 SProgressManager.SInstance.GetStageStatusList()
             );
         }
+    }
 
-        // UI の初期化後にフォーカスを設定
+    /// <summary>
+    /// 最初に解放されているステージボタンへフォーカス
+    /// </summary>
+    public void FocusFirstButton()
+    {
         StartCoroutine(SetInitialFocus());
     }
 
     /// <summary>
-    /// シーン内の EventSystem を取得
+    /// 初期フォーカス設定
     /// </summary>
-    private void FindEventSystem()
+    private IEnumerator SetInitialFocus()
     {
-        m_eventSystem = EventSystem.current;
+        // UI の有効化やレイアウト更新を待つ
+        yield return null;
 
-        if (m_eventSystem == null)
+        // EventSystem を取得
+        EventSystem es = EventSystem.current;
+
+        if (es == null)
         {
-            m_eventSystem = FindFirstObjectByType<EventSystem>();
+            es = FindFirstObjectByType<EventSystem>();
         }
 
-        if (m_eventSystem == null)
+        if (es == null)
         {
             Debug.LogWarning(
-                "[SStageSelectButtons] シーン内に EventSystem が見つかりません。");
+                "[SStageSelectButtons] EventSystem が見つかりません。");
+            yield break;
         }
+
+        // 最初に操作可能なボタンを検索
+        Button targetButton = null;
+
+        foreach (Button button in m_stageButtons)
+        {
+            if (button == null)
+            {
+                continue;
+            }
+
+            if (!button.gameObject.activeInHierarchy ||
+                !button.interactable)
+            {
+                continue;
+            }
+
+            targetButton = button;
+            break;
+        }
+
+        if (targetButton == null)
+        {
+            Debug.LogWarning(
+                "[SStageSelectButtons] フォーカス可能なステージボタンがありません。");
+            yield break;
+        }
+
+        // 既存の選択を解除
+        es.SetSelectedGameObject(null);
+
+        // ステージボタンにフォーカスを設定
+        es.SetSelectedGameObject(targetButton.gameObject);
+
+        // 明示的に選択状態を更新
+        targetButton.Select();
+
+        Debug.Log(
+            "[SStageSelectButtons] Selected: " +
+            es.currentSelectedGameObject);
     }
 
     /// <summary>
@@ -91,66 +137,12 @@ public class SStageSelectButtons : MonoBehaviour
                 continue;
             }
 
-            // 未解放ステージ・シーンがまだ無いステージはグレーアウトして操作不可
+            // 未解放ステージ・シーンがまだ無いステージは操作不可
             bool hasScene = SGameManagerBase.CanLoadScene(
                 SGameManagerBase.GetStageSceneName(status.StageID));
 
             button.interactable = status.IsUnlocked && hasScene;
         }
-    }
-
-    /// <summary>
-    /// 最初に解放されているステージボタンへフォーカス
-    /// </summary>
-    private IEnumerator SetInitialFocus()
-    {
-        // UI の有効化やレイアウト更新を待つ
-        yield return null;
-
-        if (m_eventSystem == null)
-        {
-            FindEventSystem();
-        }
-
-        if (m_eventSystem == null)
-        {
-            yield break;
-        }
-
-        // 最初に操作可能なボタンを検索
-        Button targetButton = null;
-
-        foreach (Button button in m_stageButtons)
-        {
-            if (button == null)
-            {
-                continue;
-            }
-
-            if (!button.gameObject.activeInHierarchy)
-            {
-                continue;
-            }
-
-            if (!button.interactable)
-            {
-                continue;
-            }
-
-            targetButton = button;
-            break;
-        }
-
-        if (targetButton == null)
-        {
-            Debug.LogWarning(
-                "[SStageSelectButtons] フォーカス可能なステージボタンがありません。");
-            yield break;
-        }
-
-        // 既存の選択を解除してからフォーカスを割り当てる
-        m_eventSystem.SetSelectedGameObject(null);
-        m_eventSystem.SetSelectedGameObject(targetButton.gameObject);
     }
 
     /// <summary>

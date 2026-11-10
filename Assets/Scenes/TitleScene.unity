@@ -408,6 +408,42 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 6254181037769413370, guid: 1c0f955315ec53d4d8bcd56f7a195edd, type: 3}
+      propertyPath: seVolume
+      value: 0.8
+      objectReference: {fileID: 0}
+    - target: {fileID: 6254181037769413370, guid: 1c0f955315ec53d4d8bcd56f7a195edd, type: 3}
+      propertyPath: bgmVolume
+      value: 0.1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6254181037769413370, guid: 1c0f955315ec53d4d8bcd56f7a195edd, type: 3}
+      propertyPath: seShootVolume
+      value: 0.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 6254181037769413370, guid: 1c0f955315ec53d4d8bcd56f7a195edd, type: 3}
+      propertyPath: seCursorVolume
+      value: 0.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 6254181037769413370, guid: 1c0f955315ec53d4d8bcd56f7a195edd, type: 3}
+      propertyPath: bgmInGameVolume
+      value: 0.1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6254181037769413370, guid: 1c0f955315ec53d4d8bcd56f7a195edd, type: 3}
+      propertyPath: seSwitchAppearVolume
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 6254181037769413370, guid: 1c0f955315ec53d4d8bcd56f7a195edd, type: 3}
+      propertyPath: seTurretRotateVolume
+      value: 0.1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6254181037769413370, guid: 1c0f955315ec53d4d8bcd56f7a195edd, type: 3}
+      propertyPath: seSwitchPressedVolume
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 6254181037769413370, guid: 1c0f955315ec53d4d8bcd56f7a195edd, type: 3}
+      propertyPath: seTankMoveEngineVolume
+      value: 0.1
+      objectReference: {fileID: 0}
     - target: {fileID: 8597087697082419717, guid: 1c0f955315ec53d4d8bcd56f7a195edd, type: 3}
       propertyPath: m_Name
       value: SSoundManager
