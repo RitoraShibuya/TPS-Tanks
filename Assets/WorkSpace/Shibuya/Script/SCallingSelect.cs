@@ -1,6 +1,5 @@
 
 using System;
-using System.Collections;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -11,68 +10,55 @@ public class SCallingSelect : MonoBehaviour
     [Tooltip("タイトル画面で最初にフォーカスするボタン")]
     [SerializeField] private Button SMainButton;
 
-    private EventSystem m_eventSystem;
-
     // ステージ選択要求イベント
     public event Action OnCallStageSelect;
 
-    private void Awake()
-    {
-        // ワールド内の EventSystem を取得
-        FindEventSystem();
-    }
-
     private void Start()
     {
-        // UI の初期化後にフォーカスを設定
-        StartCoroutine(SetInitialFocus());
+        FocusFirstButton();
+    }
+
+    private void OnEnable()
+    {
+        FocusFirstButton();
     }
 
     /// <summary>
-    /// シーン内の EventSystem を取得
+    /// 最初のボタンにフォーカスを設定
     /// </summary>
-    private void FindEventSystem()
+    public void FocusFirstButton()
     {
-        m_eventSystem = EventSystem.current;
+        if (SMainButton == null) return;
 
-        if (m_eventSystem == null)
+        EventSystem es = EventSystem.current;
+
+        if (es == null)
         {
-            m_eventSystem = FindFirstObjectByType<EventSystem>();
+            es = FindFirstObjectByType<EventSystem>();
         }
 
-        if (m_eventSystem == null)
-        {
-            Debug.LogWarning(
-                "[SCallingSelect] シーン内に EventSystem が見つかりません。");
-        }
-    }
-
-    /// <summary>
-    /// 初期フォーカスを設定
-    /// </summary>
-    private IEnumerator SetInitialFocus()
-    {
-        // UI の生成・初期化を待つ
-        yield return null;
-
-        if (m_eventSystem == null)
-        {
-            FindEventSystem();
-        }
-
-        if (m_eventSystem == null || SMainButton == null)
-        {
-            yield break;
-        }
+        if (es == null) return;
 
         if (!SMainButton.gameObject.activeInHierarchy ||
             !SMainButton.interactable)
         {
-            yield break;
+            Debug.LogWarning(
+                "[SCallingSelect] メインボタンが操作できません。");
+            return;
         }
 
-        m_eventSystem.SetSelectedGameObject(null);
-        m_eventSystem.SetSelectedGameObject(SMainButton.gameObject);
+        // 現在の選択状態を解除
+        es.SetSelectedGameObject(null);
+
+        // メインボタンにフォーカスを設定
+        es.SetSelectedGameObject(SMainButton.gameObject);
+
+        // 明示的に選択状態を更新
+        SMainButton.Select();
+
+        Debug.Log(
+            "[SCallingSelect] Selected: " +
+            es.currentSelectedGameObject);
     }
 
     /// <summary>
