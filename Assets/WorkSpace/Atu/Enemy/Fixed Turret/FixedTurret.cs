@@ -5,16 +5,9 @@ using UnityEngine;
 /// </summary>
 public class FixedTurret : EnemyBase
 {
-    public enum ModelForwardAxis { Forward, Right, Left, Back }
-
     [Header("パーツ設定")]
     [SerializeField] private Transform turretTransform;         // 砲塔（水平旋回）
     [SerializeField] private Transform barrelTransform;         // 砲身（上下旋回）
-    [SerializeField] private Transform muzzleTransform;         // 砲口（発射位置）
-
-    [Header("モデルの正面軸補正設定")]
-    [Tooltip("砲台（モデルの正面）が向いているローカル軸を指定")]
-    [SerializeField] private ModelForwardAxis modelForwardAxis = ModelForwardAxis.Forward;
 
     [Header("旋回ステータス")]
     [SerializeField] private float turretRotationSpeed = 90f;   // 砲塔旋回速度
@@ -22,148 +15,39 @@ public class FixedTurret : EnemyBase
     [SerializeField] private float minGunPitch = -10f;          // 砲身上限下限
     [SerializeField] private float maxGunPitch = 30f;
 
-    [Header("索敵・前方視界設定")]
-    [SerializeField] private float sightDistance = 20f;     // 正面視界の届く距離
-    [SerializeField] private float sightAngle = 120f;       // 視野角（例: 120度なら正面から左右60度ずつ）
+    [Tooltip("照準がこの角度(度)以内に合ったら発射する")]
+    [SerializeField] private float fireAngleTolerance = 20f;
 
-    [Header("射撃パラメータ")]
-    [SerializeField] private GameObject bulletPrefab;
-    [SerializeField] private float bulletSpeed = 30f;
-    [SerializeField] private float attackRange = 20f;       // 射撃を開始する距離
-    [SerializeField] private float fireRate = 1.5f;         // 発射間隔（秒）
-    [SerializeField] private LayerMask obstacleLayer = ~0;
+    // 旋回音（SSoundManager のループSE）を鳴らしているか
+    private bool isTurretSoundPlaying = false;
 
-    [Header("効果音設定 (追加)")]
-    [Tooltip("砲塔旋回音（旋回中のみループ再生するClip）")]
-    [SerializeField] private AudioClip turretRotateClip;
-
-    private float nextFireTime;
-
-    // 砲台個別の3D旋回音再生用 AudioSource
-    private AudioSource turretAudioSource;
-
-    private void Awake()
-    {
-        SetupAudioSource();
-    }
-
-    /// <summary>
-    /// 敵個別の3Dサウンド用 AudioSource 設定
-    /// </summary>
-    private void SetupAudioSource()
-    {
-        turretAudioSource = gameObject.AddComponent<AudioSource>();
-        turretAudioSource.loop = true;
-        turretAudioSource.playOnAwake = false;
-        turretAudioSource.spatialBlend = 1.0f; // 3Dサウンド（距離感の再現）
-        turretAudioSource.minDistance = 3f;
-        turretAudioSource.maxDistance = 30f;
-
-        if (turretRotateClip != null)
-        {
-            turretAudioSource.clip = turretRotateClip;
-        }
-    }
+    // ※Awake を書く場合は必ず protected override にして base.Awake() を呼ぶこと
+    //   (呼ばないと HP が 0 のままになり、倒せなくなる)
 
     private void Update()
     {
-        UpdateSoundVolume();
-
-        if (target == null)
+        if (target == null || !IsTargetInSight())
         {
             ControlTurretSound(false);
             return;
         }
 
-        // 視界（距離・モデル正面軸の視野角・壁遮蔽）内に入っているか判定
-        if (IsTargetInSight())
-        {
-            float distanceToPlayer = Vector3.Distance(transform.position, target.position);
+        float distanceToPlayer = Vector3.Distance(transform.position, target.position);
 
-            // 攻撃距離内の場合のみ照準＆射撃
-            if (distanceToPlayer <= attackRange)
-            {
-                AimTurret();
-
-                if (Time.time >= nextFireTime)
-                {
-                    if (IsAimingAtTarget()) // 照準が概ね合っていたら発射
-                    {
-                        nextFireTime = Time.time + fireRate;
-                        ExecuteShoot();
-                        SSoundManager.Instance.PlaySE_Shoot();
-                    }
-                }
-            }
-            else
-            {
-                ControlTurretSound(false);
-            }
-        }
-        else
+        // 攻撃距離内の場合のみ照準＆射撃
+        if (distanceToPlayer > attackRange)
         {
             ControlTurretSound(false);
+            return;
         }
-    }
 
-    /// <summary>
-    /// SSoundManagerのSE音量変更に追従
-    /// </summary>
-    private void UpdateSoundVolume()
-    {
-        if (SSoundManager.Instance != null && turretAudioSource != null)
+        AimTurret();
+
+        // 照準が概ね合っていたら発射（発射音は TryFire 内で再生）
+        if (IsAimingAtTarget())
         {
-            turretAudioSource.volume = SSoundManager.Instance.seVolume;
+            TryFire();
         }
-    }
-
-    /// <summary>
-    /// 全エネミー共通の視界判定（距離・モデル正面軸の視野角・壁遮蔽）
-    /// </summary>
-    private bool IsTargetInSight()
-    {
-        if (target == null) return false;
-
-        // 1. 距離判定
-        Vector3 directionToTarget = target.position - transform.position;
-        float distance = directionToTarget.magnitude;
-        if (distance > sightDistance) return false;
-
-        // 2. 視野角判定（水平面で計算）
-        Vector3 horizontalDir = directionToTarget;
-        horizontalDir.y = 0f;
-        horizontalDir.Normalize();
-
-        Vector3 forward = GetModelForward(transform);
-        forward.y = 0f;
-        forward.Normalize();
-
-        float angle = Vector3.Angle(forward, horizontalDir);
-        if (angle > (sightAngle / 2f)) return false;
-
-        // 3. 壁（障害物）の遮蔽チェック (Raycast)
-        return HasLineOfSight();
-    }
-
-    /// <summary>
-    /// 視線（Raycast）遮蔽チェック
-    /// </summary>
-    private bool HasLineOfSight()
-    {
-        if (target == null) return false;
-
-        Vector3 rayStartPos = muzzleTransform != null ? muzzleTransform.position : transform.position + Vector3.up * 1f;
-        Vector3 rayDir = (target.position - rayStartPos).normalized;
-        float dist = Vector3.Distance(rayStartPos, target.position);
-
-        if (Physics.Raycast(rayStartPos, rayDir, out RaycastHit hit, dist, obstacleLayer))
-        {
-            if (!hit.transform.IsChildOf(target) && hit.transform != target && !hit.transform.CompareTag(playerTag))
-            {
-                return false; // 壁に遮られている
-            }
-        }
-        return true;
     }
 
     /// <summary>
@@ -171,30 +55,19 @@ public class FixedTurret : EnemyBase
     /// </summary>
     private void AimTurret()
     {
-        if (target == null) return;
-
         bool isTurretRotating = false;
 
         // 1. 砲塔（Turret）の水平旋回（Yaw）
         if (turretTransform != null)
         {
-            Vector3 targetDir = (target.position - turretTransform.position).normalized;
+            Vector3 targetDir = target.position - turretTransform.position;
             targetDir.y = 0f;
 
-            if (targetDir != Vector3.zero)
+            if (targetDir.sqrMagnitude > 0.0001f)
             {
-                Quaternion lookRot = Quaternion.LookRotation(targetDir);
+                Quaternion lookRot = Quaternion.LookRotation(targetDir) * GetAxisCorrection();
 
-                // モデル軸補正
-                switch (modelForwardAxis)
-                {
-                    case ModelForwardAxis.Right: lookRot *= Quaternion.Euler(0, -90, 0); break;
-                    case ModelForwardAxis.Left: lookRot *= Quaternion.Euler(0, 90, 0); break;
-                    case ModelForwardAxis.Back: lookRot *= Quaternion.Euler(0, 180, 0); break;
-                }
-
-                float angleDiff = Quaternion.Angle(turretTransform.rotation, lookRot);
-                if (angleDiff > 0.1f)
+                if (Quaternion.Angle(turretTransform.rotation, lookRot) > 0.1f)
                 {
                     isTurretRotating = true;
                 }
@@ -212,7 +85,7 @@ public class FixedTurret : EnemyBase
         {
             Vector3 localTargetPos = turretTransform.InverseTransformPoint(target.position);
 
-            float targetAngle = 0f;
+            float targetAngle;
             if (modelForwardAxis == ModelForwardAxis.Left || modelForwardAxis == ModelForwardAxis.Right)
             {
                 targetAngle = -Mathf.Atan2(localTargetPos.y, Mathf.Abs(localTargetPos.x)) * Mathf.Rad2Deg;
@@ -230,8 +103,7 @@ public class FixedTurret : EnemyBase
 
             Quaternion targetBarrelRot = Quaternion.Euler(targetAngle, 0f, 0f);
 
-            float pitchDiff = Quaternion.Angle(barrelTransform.localRotation, targetBarrelRot);
-            if (pitchDiff > 0.1f)
+            if (Quaternion.Angle(barrelTransform.localRotation, targetBarrelRot) > 0.1f)
             {
                 isTurretRotating = true;
             }
@@ -248,116 +120,46 @@ public class FixedTurret : EnemyBase
     }
 
     /// <summary>
-    /// 砲塔旋回音の再生制御
+    /// 砲塔旋回音の再生制御（SSoundManager の旋回音ループを使う）
     /// </summary>
     private void ControlTurretSound(bool isRotating)
     {
-        if (turretAudioSource == null || turretRotateClip == null) return;
+        if (isRotating == isTurretSoundPlaying) return;
 
-        if (isRotating)
+        if (SSoundManager.Instance == null)
         {
-            if (!turretAudioSource.isPlaying)
-            {
-                turretAudioSource.Play();
-            }
+            isTurretSoundPlaying = false;
+            return;
         }
-        else
-        {
-            if (turretAudioSource.isPlaying)
-            {
-                turretAudioSource.Stop();
-            }
-        }
+
+        if (isRotating) SSoundManager.Instance.PlaySE_TurretRotate_Start();
+        else SSoundManager.Instance.PlaySE_TurretRotate_End();
+
+        isTurretSoundPlaying = isRotating;
     }
 
     /// <summary>
-    /// 照準がターゲットを捉えているか判定（誤差20度以内）
+    /// 照準がターゲットを捉えているか判定（水平方向の誤差 fireAngleTolerance 度以内）
     /// </summary>
     private bool IsAimingAtTarget()
     {
-        if (target == null) return false;
-
         Transform checkTransform = muzzleTransform != null ? muzzleTransform :
                                    (turretTransform != null ? turretTransform : transform);
 
-        Vector3 direction = (target.position - checkTransform.position);
+        Vector3 direction = target.position - checkTransform.position;
         direction.y = 0f;
-        direction.Normalize();
 
         Vector3 forward = GetModelForward(checkTransform);
         forward.y = 0f;
-        forward.Normalize();
 
-        float angle = Vector3.Angle(forward, direction);
-        return angle <= 20f;
+        if (direction.sqrMagnitude < 0.0001f || forward.sqrMagnitude < 0.0001f) return true;
+
+        return Vector3.Angle(forward, direction) <= fireAngleTolerance;
     }
 
-    /// <summary>
-    /// 指定トランスフォームの実際の見た目の正面方向を取得
-    /// </summary>
-    private Vector3 GetModelForward(Transform t)
+    private void OnDisable()
     {
-        switch (modelForwardAxis)
-        {
-            case ModelForwardAxis.Right: return t.right;
-            case ModelForwardAxis.Left: return -t.right;
-            case ModelForwardAxis.Back: return -t.forward;
-            default: return t.forward;
-        }
-    }
-
-    /// <summary>
-    /// 弾の発射実行（SharedBullet対応）
-    /// </summary>
-    private void ExecuteShoot()
-    {
-        if (muzzleTransform == null || bulletPrefab == null || target == null) return;
-
-        Vector3 shootDirection = (GetTargetAimPoint() - muzzleTransform.position).normalized;
-        Quaternion bulletRotation = Quaternion.LookRotation(shootDirection);
-
-        GameObject bulletObj = Instantiate(bulletPrefab, muzzleTransform.position, bulletRotation);
-
-        // 発射音の再生 (SSoundManager)
-        if (SSoundManager.Instance != null)
-        {
-            SSoundManager.Instance.PlaySE_Shoot();
-        }
-
-        if (bulletObj.TryGetComponent(out SharedBullet bullet))
-        {
-            bullet.Launch(shootDirection, bulletSpeed, gameObject);
-        }
-    }
-
-    private void OnDestroy()
-    {
-        // 砲台破壊時にSE再生 (SSoundManager)
-        if (SSoundManager.Instance != null)
-        {
-            SSoundManager.Instance.PlaySE_TankDestroy();
-        }
-
-        if (turretAudioSource != null && turretAudioSource.isPlaying)
-        {
-            turretAudioSource.Stop();
-        }
-    }
-
-    private void OnDrawGizmosSelected()
-    {
-        // 1. 正面軸補正を考慮した視界範囲（黄色）を描画
-        Gizmos.color = Color.yellow;
-        Vector3 forward = GetModelForward(transform);
-        Vector3 leftRay = Quaternion.Euler(0, -sightAngle / 2f, 0) * forward;
-        Vector3 rightRay = Quaternion.Euler(0, sightAngle / 2f, 0) * forward;
-
-        Gizmos.DrawRay(transform.position, leftRay * sightDistance);
-        Gizmos.DrawRay(transform.position, rightRay * sightDistance);
-        Gizmos.DrawRay(transform.position, forward * sightDistance);
-
-        // 2. 攻撃距離（赤色）
-        Gizmos.color = Color.red;
-        Gizmos.DrawWireSphere(transform.position, attackRange);
+        // 破壊SEは EnemyBase.Die() で再生する（シーン切り替え時に鳴らないように OnDestroy では鳴らさない）
+        ControlTurretSound(false);
     }
 }

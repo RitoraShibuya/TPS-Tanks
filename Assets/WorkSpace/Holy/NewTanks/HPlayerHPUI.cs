@@ -1,6 +1,10 @@
 using UnityEngine;
 using UnityEngine.UI;
 
+/// <summary>
+/// プレイヤーのHPアイコン表示
+/// 被弾するたびに左のアイコンから順に newSprite に切り替える
+/// </summary>
 public class HPlayerHPUI : MonoBehaviour
 {
     [Header("Player HP UI")]
@@ -14,14 +18,11 @@ public class HPlayerHPUI : MonoBehaviour
     [Header("監視するプレイヤーの体力 (未設定ならTankMovementから自動取得)")]
     [SerializeField] private HHelth playerHealth;
 
-    private int currentIndex = 0;
+    private Image[] hpImages;
 
     void Start()
     {
-        // 最初はすべてcurrentSpriteにする
-        firestImage.sprite = currentSprite;
-        SecondImage.sprite = currentSprite;
-        thiredImage.sprite = currentSprite;
+        hpImages = new[] { firestImage, SecondImage, thiredImage };
 
         // プレイヤーのHHelthを探す
         // (HHelthは敵や的にも付いているので、TankMovementのものを使う)
@@ -37,10 +38,18 @@ public class HPlayerHPUI : MonoBehaviour
         if (playerHealth != null)
         {
             playerHealth.OnDamaged += OnPlayerDamaged;
+
+            if (playerHealth.MaxHealth != hpImages.Length)
+            {
+                Debug.LogWarning($"HPlayerHPUI: プレイヤーの最大HP({playerHealth.MaxHealth})とアイコン数({hpImages.Length})が一致していません");
+            }
+
+            Refresh(playerHealth.Health);
         }
         else
         {
             Debug.LogWarning("HPlayerHPUI: プレイヤーの HHelth が見つかりません");
+            Refresh(hpImages.Length);
         }
     }
 
@@ -54,31 +63,21 @@ public class HPlayerHPUI : MonoBehaviour
 
     private void OnPlayerDamaged(int remainingHealth)
     {
-        ChangeImage();
+        Refresh(remainingHealth);
     }
 
-    public void ChangeImage()
+    /// <summary>
+    /// 残り体力に合わせてアイコンを更新する（減った分だけ左から newSprite にする）
+    /// </summary>
+    private void Refresh(int remainingHealth)
     {
-        // 変更するImageを取得
-        switch (currentIndex)
+        int maxHealth = playerHealth != null ? playerHealth.MaxHealth : hpImages.Length;
+        int lostCount = maxHealth - remainingHealth;
+
+        for (int i = 0; i < hpImages.Length; i++)
         {
-            case 0:
-                firestImage.sprite = newSprite;
-                break;
-
-            case 1:
-                SecondImage.sprite = newSprite;
-                break;
-
-            case 2:
-                thiredImage.sprite = newSprite;
-                break;
-
-            default:
-                return;
+            if (hpImages[i] == null) continue;
+            hpImages[i].sprite = i < lostCount ? newSprite : currentSprite;
         }
-
-        // 次のImageへ
-        currentIndex++;
     }
 }

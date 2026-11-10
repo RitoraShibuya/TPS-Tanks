@@ -12,7 +12,6 @@ GameObject:
   - component: {fileID: 6272827946493545627}
   - component: {fileID: 7580062892102533198}
   - component: {fileID: 2426594766218309487}
-  - component: {fileID: 2976127519961614177}
   m_Layer: 0
   m_Name: UDRotate
   m_TagString: Untagged
@@ -114,29 +113,6 @@ SphereCollider:
   serializedVersion: 3
   m_Radius: 0.5
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &2976127519961614177
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4432388002869094602}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 93b3ffd482849644f828a6d57efd030a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::UDRotater
-  mouseLookActionReference: {fileID: 3843822652149210943, guid: e600f60921a0b7f489c0f8e7e4480bc4, type: 3}
-  stickLookActionReference: {fileID: 4146194663260792507, guid: e600f60921a0b7f489c0f8e7e4480bc4, type: 3}
-  pitchMin: -60
-  pitchMax: 60
-  invertPitch: 0
-  mouseSensitivity: 0.2
-  gamepadSensitivity: 180
-  returnSpeed: 90
-  stickDeadzone: 0.1
-  verticalDeadzoneBand: 0
-  tuningConfig: {fileID: 0}
 --- !u!1 &5109756099303055503
 GameObject:
   m_ObjectHideFlags: 0
@@ -149,8 +125,6 @@ GameObject:
   - component: {fileID: 8424319273148066804}
   - component: {fileID: 7739126480428295994}
   - component: {fileID: 8964092293489751553}
-  - component: {fileID: 3119715466448683092}
-  - component: {fileID: 6559701017211289036}
   m_Layer: 0
   m_Name: Muzull
   m_TagString: Untagged
@@ -251,41 +225,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &3119715466448683092
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5109756099303055503}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 95ca26ce798cd8f4e84cd034fb6f00ae, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::TankWeapon
-  fireActionReference: {fileID: 424858662058167220, guid: e600f60921a0b7f489c0f8e7e4480bc4, type: 3}
-  aimSystem: {fileID: 0}
-  projectilePrefab: {fileID: 8789974318381885495, guid: a53cfb25220390b40b1c2e4d22dd5450, type: 3}
-  muzzlePoint: {fileID: 0}
-  fireInterval: 0.5
-  tuningConfig: {fileID: 0}
---- !u!114 &6559701017211289036
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5109756099303055503}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b7b61488f1319c149b547ed4993ed1b9, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::TankAimSystem
-  maxAimDistance: 12
-  aimLayerMask:
-    serializedVersion: 2
-    m_Bits: 1847
-  tuningConfig: {fileID: 0}
 --- !u!1 &6305468360950440793
 GameObject:
   m_ObjectHideFlags: 0
@@ -412,7 +351,6 @@ GameObject:
   - component: {fileID: 1331575084187664562}
   - component: {fileID: 6129915419299810021}
   - component: {fileID: 6453847534889580147}
-  - component: {fileID: 5546477668789059157}
   m_Layer: 0
   m_Name: body
   m_TagString: Untagged
@@ -541,25 +479,6 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 112
   m_CollisionDetection: 0
---- !u!114 &5546477668789059157
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 9095115616198504366}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ff9c03ea4cde7ac4393a11c311e43031, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::TankMovement
-  moveActionReference: {fileID: 1057577499507058563, guid: e600f60921a0b7f489c0f8e7e4480bc4, type: 3}
-  cameraTransform: {fileID: 0}
-  moveSpeed: 5
-  rotateSpeed: 100
-  moveAngleThreshold: 5
-  inputDeadzone: 0.1
-  tuningConfig: {fileID: 0}
 --- !u!1 &9143344749093429786
 GameObject:
   m_ObjectHideFlags: 0
@@ -572,7 +491,6 @@ GameObject:
   - component: {fileID: 2787101126114215432}
   - component: {fileID: 5558628787842121092}
   - component: {fileID: 5286663488756272651}
-  - component: {fileID: 3651167957010562277}
   m_Layer: 0
   m_Name: head
   m_TagString: Untagged
@@ -674,22 +592,3 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &3651167957010562277
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 9143344749093429786}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 50dc056fc6b157e48a29991988a8335d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::TankHead
-  mouseLookActionReference: {fileID: 3843822652149210943, guid: e600f60921a0b7f489c0f8e7e4480bc4, type: 3}
-  stickLookActionReference: {fileID: 4146194663260792507, guid: e600f60921a0b7f489c0f8e7e4480bc4, type: 3}
-  mouseSensitivity: 0.2
-  gamepadSensitivity: 180
-  stickDeadzone: 0.1
-  horizontalDeadzoneBand: 0
-  tuningConfig: {fileID: 0}

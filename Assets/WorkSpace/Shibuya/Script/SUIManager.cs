@@ -22,6 +22,10 @@ public class SUIManager : MonoBehaviour
     // 前回選択されていたUI
     private GameObject SPreviousSelectedObject;
 
+    // 直前のシーンを抜けるときに使った演出（次のシーンの入り演出をそろえるため）
+    private enum TransitionType { None, Fade, Wipe }
+    private TransitionType SLastOutTransition = TransitionType.None;
+
     private void Awake()
     {
         if (SInstance == null)
@@ -170,6 +174,24 @@ public class SUIManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// シーン開始時の入り演出。前のシーンをワイプで抜けたならワイプ、それ以外はフェードで入る
+    /// </summary>
+    public void SPlayTransitionIn(float duration = 1.0f)
+    {
+        TransitionType last = SLastOutTransition;
+        SLastOutTransition = TransitionType.None;
+
+        if (last == TransitionType.Wipe && SWipePrefab != null)
+        {
+            SPlayWipeIn(duration);
+        }
+        else
+        {
+            SPlayFadeIn(duration);
+        }
+    }
+
     public void SPlayFadeIn(float duration = 1.0f)
     {
         if (SFadePrefab == null) return;
@@ -196,6 +218,7 @@ public class SUIManager : MonoBehaviour
         if (SFadePrefab == null) return;
 
         ResetTransitions();
+        SLastOutTransition = TransitionType.Fade;
 
         SCurrentFadeInstance = Instantiate(SFadePrefab);
         SCurrentFadeInstance.transform.SetAsLastSibling();
@@ -235,6 +258,7 @@ public class SUIManager : MonoBehaviour
         if (SWipePrefab == null) return;
 
         ResetTransitions();
+        SLastOutTransition = TransitionType.Wipe;
 
         SCurrentWipeInstance = Instantiate(SWipePrefab);
 

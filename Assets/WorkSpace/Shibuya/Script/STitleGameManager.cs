@@ -1,5 +1,3 @@
-
-using System.Collections.Generic;
 using UnityEngine;
 
 public class STitleGameManager : SGameManagerBase
@@ -9,7 +7,6 @@ public class STitleGameManager : SGameManagerBase
     [SerializeField] private GameObject SStageSelectUIPrefab;
 
     private GameObject STitleUIInstance;
-    private List<StageStatusInfo> m_stageStatusList = new();
 
     private void Start()
     {
@@ -19,27 +16,20 @@ public class STitleGameManager : SGameManagerBase
             SSoundManager.Instance.PlayBGM_Menu();
         }
 
-        SUIManager.SInstance.SPlayFadeIn(0.4f);
+        if (SUIManager.SInstance == null)
+        {
+            Debug.LogError("[STitleGameManager] SUIManager がシーンにありません。");
+            return;
+        }
+
+        SUIManager.SInstance.SPlayTransitionIn(0.4f);
         STitleUIInstance = SUIManager.SInstance.SShowUI(STitleUIPrefab);
 
-        SCallingSelect selectUI =
-            STitleUIInstance.GetComponent<SCallingSelect>();
-
-        if (selectUI != null)
+        if (STitleUIInstance != null &&
+            STitleUIInstance.TryGetComponent(out SCallingSelect selectUI))
         {
             selectUI.OnCallStageSelect -= OnMainButtonClick;
             selectUI.OnCallStageSelect += OnMainButtonClick;
-        }
-
-        UpdateStageStatusList();
-    }
-
-    public void UpdateStageStatusList()
-    {
-        if (SProgressManager.SInstance != null)
-        {
-            m_stageStatusList =
-                SProgressManager.SInstance.GetStageStatusList(3);
         }
     }
 
@@ -47,79 +37,67 @@ public class STitleGameManager : SGameManagerBase
     {
         if (m_isLoading) return;
 
-        UpdateStageStatusList();
-
-        if (!SProgressManager.SInstance.IsStageCleared(1))
+        // ステージ1未クリアならステージ選択を出さずにステージ1へ
+        if (SProgressManager.SInstance == null || !SProgressManager.SInstance.IsStageCleared(1))
         {
             LoadStage(1);
+            return;
         }
-        else
+
+        GameObject uiInstance = SUIManager.SInstance.SShowUI(SStageSelectUIPrefab);
+
+        if (uiInstance != null &&
+            uiInstance.TryGetComponent(out SStageSelectButtons selectUI))
         {
-            // SUIManager.SInstance.SHideUI(STitleUIInstance);
-
-            // 重複生成を排除し1回のみ生成
-            GameObject uiInstance =
-                SUIManager.SInstance.SShowUI(SStageSelectUIPrefab);
-
-            SStageSelectButtons selectUI =
-                uiInstance.GetComponent<SStageSelectButtons>();
-
-            if (selectUI != null)
-            {
-                selectUI.OnStageSelectedEvent -= LoadStage;
-                selectUI.OnStageSelectedEvent += LoadStage;
-
-                // 今後 SStageSelectButtons 側でボタン初期化処理を
-                // 実装した際にコメント解除する
-                // selectUI.SetupButtons(m_stageStatusList);
-            }
+            selectUI.OnStageSelectedEvent -= LoadStage;
+            selectUI.OnStageSelectedEvent += LoadStage;
         }
     }
 
     private void LoadStage(int stageID)
     {
         if (m_isLoading) return;
-        if (stageID < 1 || stageID > 4) return;
+        if (stageID < 1 || stageID > SProgressManager.SStageCount) return;
 
         // 未解放ステージは弾く
-        if (!SProgressManager.SInstance.IsStageUnlocked(stageID))
+        if (SProgressManager.SInstance != null &&
+            !SProgressManager.SInstance.IsStageUnlocked(stageID))
         {
-            Debug.LogWarning(
-                $"Stage {stageID} はまだ解放されていません。");
+            Debug.LogWarning($"Stage {stageID} はまだ解放されていません。");
             return;
         }
 
-        SUIManager.SInstance.SPlayWipeOut(1.0f);
+        string sceneName = GetStageSceneName(stageID);
 
-        string sceneName = $"Stage{stageID}Scene";
-
-        LoadSceneWithDelay(sceneName, 1.0f);
+        // シーンが Build Settings にあるときだけ演出して遷移する
+        if (LoadSceneWithDelay(sceneName, 1.0f) && SUIManager.SInstance != null)
+        {
+            SUIManager.SInstance.SPlayWipeOut(1.0f);
+        }
     }
 
     // --- デバッグ用ボタン描画 ---
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
     private void OnGUI()
     {
+        if (SProgressManager.SInstance == null) return;
+
         GUILayout.BeginArea(new Rect(10, 10, 200, 280));
         GUILayout.Label("<b>[ Debug Stage Load ]</b>");
 
-        for (int i = 1; i <= 3; i++)
+        for (int i = 1; i <= SProgressManager.SStageCount; i++)
         {
-            bool isUnlocked =
-                SProgressManager.SInstance.IsStageUnlocked(i);
+            bool isUnlocked = SProgressManager.SInstance.IsStageUnlocked(i);
+            bool isCleared = SProgressManager.SInstance.IsStageCleared(i);
+            bool hasScene = CanLoadScene(GetStageSceneName(i));
 
-            bool isCleared =
-                SProgressManager.SInstance.IsStageCleared(i);
+            string status = !hasScene
+                ? "[No Scene]"
+                : isCleared ? "[Cleared]" : (isUnlocked ? "[Unlocked]" : "[Locked]");
 
-            string status = isCleared
-                ? "[Cleared]"
-                : (isUnlocked ? "[Unlocked]" : "[Locked]");
+            GUI.enabled = hasScene && isUnlocked && !m_isLoading;
 
-            string label = $"Stage {i} {status}";
-
-            GUI.enabled = isUnlocked && !m_isLoading;
-
-            if (GUILayout.Button(label, GUILayout.Height(35)))
+            if (GUILayout.Button($"Stage {i} {status}", GUILayout.Height(35)))
             {
                 LoadStage(i);
             }

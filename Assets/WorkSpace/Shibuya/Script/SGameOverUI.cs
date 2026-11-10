@@ -5,34 +5,34 @@ using UnityEngine.EventSystems;
 
 public class SGameOverUI : MonoBehaviour
 {
-    [Header("Å‰‚É‘I‘ğ‚·‚éƒ{ƒ^ƒ“")]
-    [SerializeField, Tooltip("¶¬‚ÉƒtƒH[ƒJƒX‚ğ‡‚í‚¹‚½‚¢Button‚ğƒZƒbƒg")]
+    [Header("æœ€åˆã«é¸æŠã™ã‚‹ãƒœã‚¿ãƒ³")]
+    [SerializeField, Tooltip("ç”Ÿæˆæ™‚ã«ãƒ•ã‚©ãƒ¼ã‚«ã‚¹ã‚’åˆã‚ã›ãŸã„Buttonã‚’ã‚»ãƒƒãƒˆ")]
     private GameObject FirstSelectedButton;
 
-    // SInGameManagerBase ‚©‚çó‚¯æ‚éƒR[ƒ‹ƒoƒbƒNŠÖ”
-    private Action SOnRestartAction; // Continue—p
-    private Action SOnReturnAction;  // To Title—p
+    // SInGameManagerBase ã‹ã‚‰å—ã‘å–ã‚‹ã‚³ãƒ¼ãƒ«ãƒãƒƒã‚¯é–¢æ•°
+    private Action SOnRestartAction; // Continueç”¨
+    private Action SOnReturnAction;  // To Titleç”¨
 
     private void OnEnable()
     {
-        // UI‚ª¶¬EƒAƒNƒeƒBƒu‚É‚È‚Á‚½‚çA1ƒtƒŒ[ƒ€‘Ò‹@‚µ‚ÄŠmÀ‚ÉƒtƒH[ƒJƒX‚ğ“–‚Ä‚é
+        // UIãŒç”Ÿæˆãƒ»ã‚¢ã‚¯ãƒ†ã‚£ãƒ–ã«ãªã£ãŸã‚‰ã€1ãƒ•ãƒ¬ãƒ¼ãƒ å¾…æ©Ÿã—ã¦ç¢ºå®Ÿã«ãƒ•ã‚©ãƒ¼ã‚«ã‚¹ã‚’å½“ã¦ã‚‹
         StartCoroutine(FocusNextFrame());
     }
 
     private IEnumerator FocusNextFrame()
     {
-        yield return null; // 1ƒtƒŒ[ƒ€‘Ò‹@
+        yield return null; // 1ãƒ•ãƒ¬ãƒ¼ãƒ å¾…æ©Ÿ
         FocusFirstButton();
     }
 
-    // GameManager‚©‚çUI•\¦‚ÉŒÄ‚Î‚ê‚é‰Šú‰»ŠÖ”
+    // GameManagerã‹ã‚‰UIè¡¨ç¤ºæ™‚ã«å‘¼ã°ã‚Œã‚‹åˆæœŸåŒ–é–¢æ•°
     public void Setup(Action onRestart, Action onReturn)
     {
         SOnRestartAction = onRestart;
         SOnReturnAction = onReturn;
     }
 
-    // ƒRƒ“ƒgƒ[ƒ‰[EƒL[ƒ{[ƒh‘€ì—p‚ÌƒtƒH[ƒJƒXİ’è
+    // ã‚³ãƒ³ãƒˆãƒ­ãƒ¼ãƒ©ãƒ¼ãƒ»ã‚­ãƒ¼ãƒœãƒ¼ãƒ‰æ“ä½œç”¨ã®ãƒ•ã‚©ãƒ¼ã‚«ã‚¹è¨­å®š
     public void FocusFirstButton()
     {
         if (FirstSelectedButton == null) return;
@@ -51,7 +51,7 @@ public class SGameOverUI : MonoBehaviour
     }
 
     // ==========================================
-    // UI Button‚Ì OnClick() ‚Éİ’è‚·‚éƒƒ\ƒbƒhŒQ
+    // UI Buttonã® OnClick() ã«è¨­å®šã™ã‚‹ãƒ¡ã‚½ãƒƒãƒ‰ç¾¤
     // ==========================================
 
     public void AContinueButton()

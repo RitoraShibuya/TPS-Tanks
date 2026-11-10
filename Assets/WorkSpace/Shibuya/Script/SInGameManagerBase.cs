@@ -17,7 +17,7 @@ public class SInGameManagerBase : SGameManagerBase
     [SerializeField] private GameObject SStageClearPrefab;
 
     [Header("Enemy Settings")]
-    [Tooltip("シーン上にあらかじめ配置された敵（EnemyBase派生）をセット")]
+    [Tooltip("倒すとクリアになる敵（EnemyBase派生）をセット。空の場合はシーン上の全ての敵が対象になる")]
     [SerializeField] private List<EnemyBase> m_targetEnemies = new();
 
     public bool IsPaused { get; private set; } = false;
@@ -27,6 +27,7 @@ public class SInGameManagerBase : SGameManagerBase
 
     // プレイヤー制御用
     private TankMovement m_playerTank;
+    private HHelth m_playerHealth;
     private bool m_isStartLocked = false;
 
     // ==========================================
@@ -48,6 +49,23 @@ public class SInGameManagerBase : SGameManagerBase
             SPauseAction.action.performed -= OnPauseInput;
             SPauseAction.action.Disable();
         }
+    }
+
+    protected virtual void OnDestroy()
+    {
+        // 監視イベントの解除
+        foreach (var enemy in m_targetEnemies)
+        {
+            if (enemy != null) enemy.OnDied -= OnEnemyDied;
+        }
+
+        if (m_playerHealth != null)
+        {
+            m_playerHealth.OnDie -= OnPlayerDied;
+        }
+
+        // ポーズ中にシーンが破棄されても時間が止まったままにならないようにする
+        Time.timeScale = 1f;
     }
 
     private void OnPauseInput(InputAction.CallbackContext context)
@@ -81,12 +99,9 @@ public class SInGameManagerBase : SGameManagerBase
         {
             SetPlayerControlEnabled(false);
         }
-        else
+        else if (!m_isStartLocked && !m_isGameEnded)
         {
-            if (!m_isStartLocked && !m_isGameEnded)
-            {
-                SetPlayerControlEnabled(true);
-            }
+            SetPlayerControlEnabled(true);
         }
 
         // 3. UIManagerに直接「UIを出せ/消せ」と命令する
@@ -108,7 +123,7 @@ public class SInGameManagerBase : SGameManagerBase
     // ==========================================
     protected virtual void Start()
     {
-        // ★インゲームBGMの再生
+        // インゲームBGMの再生
         if (SSoundManager.Instance != null)
         {
             SSoundManager.Instance.PlayBGM_InGame();
@@ -117,17 +132,25 @@ public class SInGameManagerBase : SGameManagerBase
         // シーン上の TankMovement を自動検索
         m_playerTank = FindFirstObjectByType<TankMovement>();
 
-        if (SLevelIntroPrefab != null)
+        if (SUIManager.SInstance != null)
         {
-            GameObject introUI = SUIManager.SInstance.SShowUI(SLevelIntroPrefab);
-            var introController = introUI.GetComponent<SLevelIntroUIController>();
-
-            if (introController != null)
+            if (SLevelIntroPrefab != null)
             {
-                introController.SetupAndPlay(SStageID);
+                GameObject introUI = SUIManager.SInstance.SShowUI(SLevelIntroPrefab);
+                var introController = introUI != null ? introUI.GetComponent<SLevelIntroUIController>() : null;
+
+                if (introController != null)
+                {
+                    introController.SetupAndPlay(SStageID);
+                }
             }
+
+            SUIManager.SInstance.SPlayFadeIn(0.4f);
         }
-        SUIManager.SInstance.SPlayFadeIn(0.4f);
+        else
+        {
+            Debug.LogWarning("[SInGameManagerBase] SUIManager がシーンにありません。");
+        }
 
         // 敵の死亡監視イベントを登録
         SetupEnemyObservers();
@@ -146,7 +169,7 @@ public class SInGameManagerBase : SGameManagerBase
     {
         m_isStartLocked = true;
 
-        // ★1フレーム待機することで TankMovement の Start() と最初の LateUpdate() (カメラ初期位置セット) を確実に実行させる
+        // 1フレーム待機することで TankMovement の Start() と最初の LateUpdate() (カメラ初期位置セット) を確実に実行させる
         yield return null;
 
         // カメラが正常位置についた後に操作をオフにする
@@ -173,38 +196,46 @@ public class SInGameManagerBase : SGameManagerBase
 
         m_playerTank.enabled = isEnabled;
 
-        if (!isEnabled)
+        if (!isEnabled && m_playerTank.TryGetComponent<Rigidbody>(out var rb))
         {
-            if (m_playerTank.TryGetComponent<Rigidbody>(out var rb))
-            {
-                rb.linearVelocity = Vector3.zero;
-                rb.angularVelocity = Vector3.zero;
-            }
+            rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
         }
     }
 
     private void SetupEnemyObservers()
     {
+        m_targetEnemies.RemoveAll(enemy => enemy == null);
+
+        // 未設定ならシーン上の全ての敵をクリア条件にする（登録忘れでクリアできなくなるのを防ぐ）
+        if (m_targetEnemies.Count == 0)
+        {
+            m_targetEnemies.AddRange(FindObjectsByType<EnemyBase>(FindObjectsSortMode.None));
+        }
+
+        if (m_targetEnemies.Count == 0)
+        {
+            Debug.LogWarning("[SInGameManagerBase] シーンに敵がいないため、敵全滅によるクリアは発生しません。");
+            return;
+        }
+
         foreach (var enemy in m_targetEnemies)
         {
-            if (enemy == null) continue;
-
-            // EnemyBaseを書き換える代わりに、監視用コンポーネントを動的にアタッチする
-            var observer = enemy.gameObject.AddComponent<EnemyDeathObserver>();
-            observer.OnDestroyedAction += OnEnemyDied;
+            enemy.OnDied += OnEnemyDied;
         }
     }
 
     /// <summary>
-    /// 敵がDestroyされた瞬間だけ呼ばれる処理
+    /// 敵が倒された瞬間だけ呼ばれる処理（シーン切り替えによる破棄では呼ばれない）
     /// </summary>
-    private void OnEnemyDied()
+    private void OnEnemyDied(EnemyBase deadEnemy)
     {
-        // 破棄された敵（null）をリストから除外
+        deadEnemy.OnDied -= OnEnemyDied;
+        m_targetEnemies.Remove(deadEnemy);
         m_targetEnemies.RemoveAll(enemy => enemy == null);
 
-        // 全滅したらクリア（すでにクリア演出中なら弾く）
-        if (m_targetEnemies.Count == 0 && !m_isGameEnded)
+        // 全滅したらクリア（すでにクリア演出中なら OnGameClear 側で弾く）
+        if (m_targetEnemies.Count == 0)
         {
             OnGameClear();
         }
@@ -212,30 +243,24 @@ public class SInGameManagerBase : SGameManagerBase
 
     private void SetupPlayerObserver()
     {
-        HHelth playerHealth = null;
-
         if (m_playerTank != null)
         {
-            Debug.Log("m_playerTankがからです");
-            playerHealth = m_playerTank.GetComponent<HHelth>();
+            m_playerHealth = m_playerTank.GetComponent<HHelth>();
         }
 
         // TankMovement と同じオブジェクトに無ければシーン上から検索
-        if (playerHealth == null)
+        if (m_playerHealth == null)
         {
-            Debug.Log("playerHealthがからです");
-            playerHealth = FindFirstObjectByType<HHelth>();
+            m_playerHealth = FindFirstObjectByType<HHelth>();
         }
 
-        if (playerHealth == null)
+        if (m_playerHealth == null)
         {
-            Debug.Log("playerHealthがからなのでreturnしました");
+            Debug.LogWarning("[SInGameManagerBase] プレイヤーの HHelth が見つからないため、ゲームオーバーを検知できません。");
             return;
         }
-        // HHelthを書き換える代わりに、監視用コンポーネントを動的にアタッチする
-        var observer = playerHealth.gameObject.AddComponent<PlayerDeathObserver>();
-        observer.Setup(playerHealth);
-        observer.OnDiedAction += OnPlayerDied;
+
+        m_playerHealth.OnDie += OnPlayerDied;
     }
 
     /// <summary>
@@ -244,8 +269,6 @@ public class SInGameManagerBase : SGameManagerBase
     private void OnPlayerDied()
     {
         Debug.Log("プレイヤーが死にました");
-        // すでにクリア / ゲームオーバー演出中なら弾く
-        if (m_isGameEnded) return;
         OnGameOver();
     }
 
@@ -259,38 +282,39 @@ public class SInGameManagerBase : SGameManagerBase
         if (m_isGameEnded || m_isLoading) return;
         m_isGameEnded = true;
 
-        // ★BGMを停止し、クリアSEを再生
+        // BGMを停止し、クリアSEを再生
         if (SSoundManager.Instance != null)
         {
             SSoundManager.Instance.StopBGM();
             SSoundManager.Instance.PlaySE_StageClear();
         }
 
-        SStageData data = SProgressManager.SInstance.GetStageData(SStageID);
-        if (data == null)
+        // 進行状況を記録
+        if (SProgressManager.SInstance != null)
         {
-            data = new SStageData { SStageID = SStageID, SIsCleared = true };
-            SProgressManager.SInstance.AddStageData(data);
-        }
-        else
-        {
-            data.SIsCleared = true;
+            SStageData data = SProgressManager.SInstance.GetStageData(SStageID);
+            if (data == null)
+            {
+                SProgressManager.SInstance.AddStageData(new SStageData { SStageID = SStageID, SIsCleared = true });
+            }
+            else
+            {
+                data.SIsCleared = true;
+            }
         }
 
         OnGameEnd();
 
+        if (SUIManager.SInstance == null) return;
+
         GameObject clearUI = SUIManager.SInstance.SShowUI(SStageClearPrefab);
-        if (clearUI != null)
+        if (clearUI != null && clearUI.TryGetComponent(out SStageClear clearScript))
         {
-            SStageClear clearScript = clearUI.GetComponent<SStageClear>();
-            if (clearScript != null)
-            {
-                clearScript.Setup(
-                    onNext: () => OnNextStage(),
-                    onRestart: () => OnRestart(),
-                    onReturn: () => OnBackTitle()
-                );
-            }
+            clearScript.Setup(
+                onNext: () => OnNextStage(),
+                onRestart: () => OnRestart(),
+                onReturn: () => OnBackTitle()
+            );
         }
     }
 
@@ -300,7 +324,7 @@ public class SInGameManagerBase : SGameManagerBase
         if (m_isGameEnded || m_isLoading) return;
         m_isGameEnded = true;
 
-        // ★BGMを停止し、ゲームオーバーSEを再生
+        // BGMを停止し、ゲームオーバーSEを再生
         if (SSoundManager.Instance != null)
         {
             SSoundManager.Instance.StopBGM();
@@ -308,18 +332,16 @@ public class SInGameManagerBase : SGameManagerBase
         }
 
         OnGameEnd();
-        GameObject overUI = SUIManager.SInstance.SShowUI(SGameOverPrefab);
 
-        if (overUI != null)
+        if (SUIManager.SInstance == null) return;
+
+        GameObject overUI = SUIManager.SInstance.SShowUI(SGameOverPrefab);
+        if (overUI != null && overUI.TryGetComponent(out SGameOverUI overScript))
         {
-            SGameOverUI overScript = overUI.GetComponent<SGameOverUI>();
-            if (overScript != null)
-            {
-                overScript.Setup(
-                    onRestart: () => OnRestart(),
-                    onReturn: () => OnBackTitle()
-                );
-            }
+            overScript.Setup(
+                onRestart: () => OnRestart(),
+                onReturn: () => OnBackTitle()
+            );
         }
     }
 
@@ -327,40 +349,40 @@ public class SInGameManagerBase : SGameManagerBase
 
     private void OnNextStage()
     {
-        if (m_isLoading) return;
+        int nextStageID = SStageID + 1;
+        string nextSceneName = GetStageSceneName(nextStageID);
 
-        SetPause(false);
-
-        string nextSceneName = "Stage" + (SStageID + 1) + "Scene";
-        LoadSceneWithDelay(nextSceneName, 1.6f);
-
-        if (SUIManager.SInstance != null)
+        // 最終ステージ、または次のステージのシーンがまだ無い場合はタイトルへ戻る
+        if (nextStageID > SProgressManager.SStageCount || !CanLoadScene(nextSceneName))
         {
-            SUIManager.SInstance.SPlayFadeOut(1.6f);
+            Debug.Log($"[SInGameManagerBase] 次のステージ ({nextSceneName}) が無いためタイトルへ戻ります。");
+            OnBackTitle();
+            return;
         }
+
+        TransitionTo(nextSceneName);
     }
 
     private void OnBackTitle()
     {
-        if (m_isLoading) return;
-
-        SetPause(false);
-        LoadSceneWithDelay("TitleScene", 1.6f);
-
-        if (SUIManager.SInstance != null)
-        {
-            SUIManager.SInstance.SPlayFadeOut(1.6f);
-        }
+        TransitionTo("TitleScene");
     }
 
     private void OnRestart()
     {
+        TransitionTo(SceneManager.GetActiveScene().name);
+    }
+
+    /// <summary>
+    /// フェードアウトしてからシーンを切り替える
+    /// </summary>
+    private void TransitionTo(string sceneName)
+    {
         if (m_isLoading) return;
 
         SetPause(false);
-        LoadSceneWithDelay(SceneManager.GetActiveScene().name, 1.6f);
 
-        if (SUIManager.SInstance != null)
+        if (LoadSceneWithDelay(sceneName, 1.6f) && SUIManager.SInstance != null)
         {
             SUIManager.SInstance.SPlayFadeOut(1.6f);
         }
@@ -381,32 +403,7 @@ public class SInGameManagerBase : SGameManagerBase
     // デバッグ処理
     // ==========================================
 
-    //private void OnGUI()
-    //{
-    //    GUI.enabled = !m_isLoading && !m_isGameEnded;
-
-    //    GUILayout.BeginArea(new Rect(20, 20, 200, 200));
-
-    //    if (GUILayout.Button("【DEBUG】Game Clear", GUILayout.Height(50)))
-    //    {
-    //        Debug.Log("[Debug] GUIボタンから GameClear を実行しました");
-    //        ForceGameClear();
-    //    }
-
-    //    GUILayout.Space(10);
-
-    //    if (GUILayout.Button("【DEBUG】Game Over", GUILayout.Height(50)))
-    //    {
-    //        Debug.Log("[Debug] GUIボタンから GameOver を実行しました");
-    //        ForceGameOver();
-    //    }
-
-    //    GUILayout.EndArea();
-
-    //    GUI.enabled = true;
-    //}
-
-    //[ContextMenu("Debug: Force Game Clear")]
+    [ContextMenu("Debug: Force Game Clear")]
     public void ForceGameClear()
     {
         OnGameClear();
@@ -416,47 +413,5 @@ public class SInGameManagerBase : SGameManagerBase
     public void ForceGameOver()
     {
         OnGameOver();
-    }
-
-    // ==========================================
-    // 敵の死亡（Destroy）を検知する内部ヘルパークラス
-    // ==========================================
-    private class EnemyDeathObserver : MonoBehaviour
-    {
-        public System.Action OnDestroyedAction;
-
-        private void OnDestroy()
-        {
-            OnDestroyedAction?.Invoke();
-        }
-    }
-
-    // ==========================================
-    // プレイヤーの死亡（HHelth.OnDie）を検知する内部ヘルパークラス
-    // ==========================================
-    private class PlayerDeathObserver : MonoBehaviour
-    {
-        public System.Action OnDiedAction;
-
-        private HHelth m_health;
-
-        public void Setup(HHelth health)
-        {
-            m_health = health;
-            m_health.OnDie += HandleDie;
-        }
-
-        private void HandleDie()
-        {
-            OnDiedAction?.Invoke();
-        }
-
-        private void OnDestroy()
-        {
-            if (m_health != null)
-            {
-                m_health.OnDie -= HandleDie;
-            }
-        }
     }
 }

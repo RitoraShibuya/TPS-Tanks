@@ -129,26 +129,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 4167280743394806330, guid: 35c8371bb686f0e48b24378aab016daf, type: 3}
   m_PrefabInstance: {fileID: 1975374830}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &75043364
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 75043362}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ff9c03ea4cde7ac4393a11c311e43031, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::TankBody
-  moveActionReference: {fileID: 1057577499507058563, guid: e600f60921a0b7f489c0f8e7e4480bc4, type: 3}
-  cameraTransform: {fileID: 0}
-  moveSpeed: 5
-  rotateSpeed: 180
-  moveAngleThreshold: 5
-  inputDeadzone: 0.1
-  lockHeightAndTilt: 1
-  tuningConfig: {fileID: 11400000, guid: bab8a5ca4e1797643b1fd1c4ddfd25af, type: 2}
 --- !u!54 &75043365
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -265,26 +245,6 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 35c8371bb686f0e48b24378aab016daf, type: 3}
   m_PrefabInstance: {fileID: 1230054805}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &269473213
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 269473212}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3fe5ac33843fdae47bbbf5dd9542260c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::HTanksMove
-  moveActionReference: {fileID: 1057577499507058563, guid: e600f60921a0b7f489c0f8e7e4480bc4, type: 3}
-  cameraTransform: {fileID: 1062047254}
-  moveSpeed: 5
-  rotateSpeed: 180
-  moveAngleThreshold: 5
-  inputDeadzone: 0.1
-  lockHeightAndTilt: 1
-  tuningConfig: {fileID: 11400000, guid: bab8a5ca4e1797643b1fd1c4ddfd25af, type: 2}
 --- !u!54 &269473214
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -338,26 +298,6 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: 951636146637939270, guid: 35c8371bb686f0e48b24378aab016daf, type: 3}
   m_PrefabInstance: {fileID: 1975374830}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &313786716
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 313786714}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 50dc056fc6b157e48a29991988a8335d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::TankHead
-  mouseLookActionReference: {fileID: 3843822652149210943, guid: e600f60921a0b7f489c0f8e7e4480bc4, type: 3}
-  stickLookActionReference: {fileID: 4146194663260792507, guid: e600f60921a0b7f489c0f8e7e4480bc4, type: 3}
-  mouseSensitivity: 0.2
-  gamepadSensitivity: 180
-  stickDeadzone: 0.1
-  horizontalDeadzoneBand: 0
-  bodyTransform: {fileID: 75043363}
-  tuningConfig: {fileID: 11400000, guid: bab8a5ca4e1797643b1fd1c4ddfd25af, type: 2}
 --- !u!1 &347935154
 GameObject:
   m_ObjectHideFlags: 0
@@ -370,7 +310,6 @@ GameObject:
   - component: {fileID: 347935159}
   - component: {fileID: 347935158}
   - component: {fileID: 347935157}
-  - component: {fileID: 347935156}
   m_Layer: 5
   m_Name: Image
   m_TagString: Untagged
@@ -397,24 +336,6 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 5, y: 5}
   m_Pivot: {x: 0.5, y: 0.5}
---- !u!114 &347935156
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 347935154}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 16590fa9990a72d4b8eb9cf70f41389e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::TankAimReticle
-  aimSystem: {fileID: 591541174}
-  renderCamera: {fileID: 0}
-  pitchSource: {fileID: 1666663524}
-  yScreenOffset: 0
-  pixelsPerPitchDegree: 4
-  tuningConfig: {fileID: 11400000, guid: bab8a5ca4e1797643b1fd1c4ddfd25af, type: 2}
 --- !u!225 &347935157
 CanvasGroup:
   m_ObjectHideFlags: 0
@@ -582,44 +503,6 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: 3374480796026619490, guid: 35c8371bb686f0e48b24378aab016daf, type: 3}
   m_PrefabInstance: {fileID: 1975374830}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &591541173
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 591541171}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 95ca26ce798cd8f4e84cd034fb6f00ae, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::TankWeapon
-  fireActionReference: {fileID: 424858662058167220, guid: e600f60921a0b7f489c0f8e7e4480bc4, type: 3}
-  aimSystem: {fileID: 591541174}
-  projectilePrefab: {fileID: 8789974318381885495, guid: a53cfb25220390b40b1c2e4d22dd5450, type: 3}
-  muzzlePoint: {fileID: 591541175}
-  fireInterval: 0.5
-  tuningConfig: {fileID: 11400000, guid: bab8a5ca4e1797643b1fd1c4ddfd25af, type: 2}
-  firstLocation: {x: 0, y: 0, z: 0}
-  firstRotation: {x: 0, y: 0, z: 0, w: 0}
---- !u!114 &591541174
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 591541171}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b7b61488f1319c149b547ed4993ed1b9, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::TankAimSystem
-  maxAimDistance: 12
-  aimLayerMask:
-    serializedVersion: 2
-    m_Bits: 1847
-  tuningConfig: {fileID: 11400000, guid: bab8a5ca4e1797643b1fd1c4ddfd25af, type: 2}
-  LayValiable: {x: 0, y: 0, z: 0}
 --- !u!4 &591541175 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -7177733953218814261, guid: 35c8371bb686f0e48b24378aab016daf, type: 3}
@@ -1192,13 +1075,13 @@ PrefabInstance:
       addedObject: {fileID: 269473214}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 35c8371bb686f0e48b24378aab016daf, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 269473213}
+      addedObject: {fileID: 0}
     - targetCorrespondingSourceObject: {fileID: 3374480796026619490, guid: 35c8371bb686f0e48b24378aab016daf, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 1626879628}
+      addedObject: {fileID: 0}
     - targetCorrespondingSourceObject: {fileID: 3374480796026619490, guid: 35c8371bb686f0e48b24378aab016daf, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 1626879627}
+      addedObject: {fileID: 0}
   m_SourcePrefab: {fileID: 100100000, guid: 35c8371bb686f0e48b24378aab016daf, type: 3}
 --- !u!1 &1299052448
 GameObject:
@@ -1323,72 +1206,11 @@ Transform:
   m_CorrespondingSourceObject: {fileID: -7177733953218814261, guid: 35c8371bb686f0e48b24378aab016daf, type: 3}
   m_PrefabInstance: {fileID: 1230054805}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &1626879627
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1626879625}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 95ca26ce798cd8f4e84cd034fb6f00ae, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::TankWeapon
-  fireActionReference: {fileID: 424858662058167220, guid: e600f60921a0b7f489c0f8e7e4480bc4, type: 3}
-  aimSystem: {fileID: 1626879628}
-  projectilePrefab: {fileID: 8789974318381885495, guid: a53cfb25220390b40b1c2e4d22dd5450, type: 3}
-  muzzlePoint: {fileID: 1626879626}
-  fireInterval: 0.5
-  tuningConfig: {fileID: 11400000, guid: bab8a5ca4e1797643b1fd1c4ddfd25af, type: 2}
-  firstLocation: {x: 0, y: 0, z: 0}
-  firstRotation: {x: 0, y: 0, z: 0, w: 0}
---- !u!114 &1626879628
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1626879625}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b7b61488f1319c149b547ed4993ed1b9, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::TankAimSystem
-  maxAimDistance: 12
-  aimLayerMask:
-    serializedVersion: 2
-    m_Bits: 1847
-  tuningConfig: {fileID: 11400000, guid: bab8a5ca4e1797643b1fd1c4ddfd25af, type: 2}
-  LayValiable: {x: 0, y: 0, z: 0}
 --- !u!1 &1666663522 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 8711695321769484120, guid: 35c8371bb686f0e48b24378aab016daf, type: 3}
   m_PrefabInstance: {fileID: 1975374830}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &1666663524
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1666663522}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 93b3ffd482849644f828a6d57efd030a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::UDRotater
-  mouseLookActionReference: {fileID: 3843822652149210943, guid: e600f60921a0b7f489c0f8e7e4480bc4, type: 3}
-  stickLookActionReference: {fileID: 4146194663260792507, guid: e600f60921a0b7f489c0f8e7e4480bc4, type: 3}
-  pitchMin: -10
-  pitchMax: 30
-  invertPitch: 0
-  mouseSensitivity: 0.2
-  gamepadSensitivity: 60
-  returnSpeed: 90
-  stickDeadzone: 0.1
-  verticalDeadzoneBand: 0
-  tuningConfig: {fileID: 11400000, guid: bab8a5ca4e1797643b1fd1c4ddfd25af, type: 2}
 --- !u!1 &1845881193 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 35c8371bb686f0e48b24378aab016daf, type: 3}
@@ -1715,19 +1537,19 @@ PrefabInstance:
       addedObject: {fileID: 75043365}
     - targetCorrespondingSourceObject: {fileID: 635547659545568360, guid: 35c8371bb686f0e48b24378aab016daf, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 75043364}
+      addedObject: {fileID: 0}
     - targetCorrespondingSourceObject: {fileID: 951636146637939270, guid: 35c8371bb686f0e48b24378aab016daf, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 313786716}
+      addedObject: {fileID: 0}
     - targetCorrespondingSourceObject: {fileID: 3374480796026619490, guid: 35c8371bb686f0e48b24378aab016daf, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 591541174}
+      addedObject: {fileID: 0}
     - targetCorrespondingSourceObject: {fileID: 3374480796026619490, guid: 35c8371bb686f0e48b24378aab016daf, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 591541173}
+      addedObject: {fileID: 0}
     - targetCorrespondingSourceObject: {fileID: 8711695321769484120, guid: 35c8371bb686f0e48b24378aab016daf, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 1666663524}
+      addedObject: {fileID: 0}
   m_SourcePrefab: {fileID: 100100000, guid: 35c8371bb686f0e48b24378aab016daf, type: 3}
 --- !u!1 &2031835446
 GameObject:

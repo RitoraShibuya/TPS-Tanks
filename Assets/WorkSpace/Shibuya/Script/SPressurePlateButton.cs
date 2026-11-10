@@ -1,4 +1,3 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -22,6 +21,10 @@ public class SPressurePlateButton : MonoBehaviour
     [Tooltip("ボタンが押された時に消去（Destroy）する壁オブジェクトの配列")]
     [SerializeField] private GameObject[] m_targetWalls;
 
+    [Header("デバッグ")]
+    [Tooltip("画面右上にデバッグ用ボタンを表示する（エディタ / Development Build のみ）")]
+    [SerializeField] private bool m_showDebugGUI = false;
+
     public ButtonState CurrentState => m_currentState;
 
     // 内部状態
@@ -32,9 +35,6 @@ public class SPressurePlateButton : MonoBehaviour
 
     private Collider m_myCollider;
     private Renderer[] m_myRenderers;
-
-    // 敵の全滅確認コルーチンの重複実行防止
-    private Coroutine m_enemyCheckCoroutine;
 
     private void Awake()
     {
@@ -50,8 +50,16 @@ public class SPressurePlateButton : MonoBehaviour
         // 初期状態を設定
         SetState(ButtonState.Hidden);
 
-        // 敵の破棄監視を登録
+        // 敵の撃破監視を登録
         SetupEnemyObservers();
+    }
+
+    private void OnDestroy()
+    {
+        foreach (var enemy in m_targetEnemies)
+        {
+            if (enemy != null) enemy.OnDied -= OnEnemyDied;
+        }
     }
 
     /// <summary>
@@ -98,7 +106,7 @@ public class SPressurePlateButton : MonoBehaviour
                 SetColliderEnabled(true);
 
                 // ボタン出現音
-                SSoundManager.Instance?.PlaySE_SwitchAppear();
+                if (SSoundManager.Instance != null) SSoundManager.Instance.PlaySE_SwitchAppear();
 
                 Debug.Log(
                     "[SPressurePlateButton] 敵が全滅したため、ボタンが出現しました。");
@@ -109,7 +117,7 @@ public class SPressurePlateButton : MonoBehaviour
                 SetColliderEnabled(false);
 
                 // ボタン押下音
-                SSoundManager.Instance?.PlaySE_SwitchPressed();
+                if (SSoundManager.Instance != null) SSoundManager.Instance.PlaySE_SwitchPressed();
 
                 // 対象の壁を破壊
                 DestroyWalls();
@@ -148,91 +156,42 @@ public class SPressurePlateButton : MonoBehaviour
     }
 
     /// <summary>
-    /// 監視対象の敵へ破棄検知コンポーネントを追加
+    /// 監視対象の敵の撃破イベントを購読する
     /// </summary>
     private void SetupEnemyObservers()
     {
-        if (m_targetEnemies == null || m_targetEnemies.Count == 0)
-        {
-            // 対象の敵がいない場合は最初から出現
-            SetState(ButtonState.Appeared);
-            return;
-        }
-
         // Inspector の参照が Missing になっている敵を除去
         m_targetEnemies.RemoveAll(enemy => enemy == null);
 
-        if (m_targetEnemies.Count == 0)
-        {
-            SetState(ButtonState.Appeared);
-            return;
-        }
-
         foreach (var enemy in m_targetEnemies)
         {
-            if (enemy == null) continue;
-
-            // 既に監視コンポーネントがある場合は再利用
-            EnemyDeathObserver observer =
-                enemy.GetComponent<EnemyDeathObserver>();
-
-            if (observer == null)
-            {
-                observer = enemy.gameObject.AddComponent<EnemyDeathObserver>();
-            }
-
-            // このボタンへの通知を登録
-            observer.Register(this);
+            enemy.OnDied += OnEnemyDied;
         }
 
-        // 登録時点ですでに全滅していないか確認
-        CheckRemainingEnemiesImmediately();
+        // 対象の敵がいない場合は最初から出現
+        CheckRemainingEnemies();
     }
 
     /// <summary>
-    /// 敵の破棄通知を受け取ったときに呼び出される
+    /// 敵が倒されたときに呼び出される（シーン切り替えによる破棄では呼ばれない）
     /// </summary>
-    private void OnEnemyDied()
+    private void OnEnemyDied(EnemyBase deadEnemy)
     {
-        Debug.Log(
-            "[SPressurePlateButton] 敵の破棄通知を受信しました。");
+        deadEnemy.OnDied -= OnEnemyDied;
+        m_targetEnemies.Remove(deadEnemy);
 
-        // 同じフレーム内で複数回実行しない
-        if (m_enemyCheckCoroutine == null)
-        {
-            m_enemyCheckCoroutine =
-                StartCoroutine(CheckRemainingEnemies());
-        }
-    }
-
-    /// <summary>
-    /// Destroy の反映後に残りの敵を確認
-    /// </summary>
-    private IEnumerator CheckRemainingEnemies()
-    {
-        // Destroy の反映後に確認する
-        yield return null;
-
-        m_enemyCheckCoroutine = null;
-
-        CheckRemainingEnemiesImmediately();
+        CheckRemainingEnemies();
     }
 
     /// <summary>
     /// 残っている敵を確認し、全滅していればボタンを出現させる
     /// </summary>
-    private void CheckRemainingEnemiesImmediately()
+    private void CheckRemainingEnemies()
     {
         if (m_currentState != ButtonState.Hidden) return;
 
-        if (m_targetEnemies == null)
-        {
-            SetState(ButtonState.Appeared);
-            return;
-        }
-
-        // Unity の Destroy 済みオブジェクト参照を除去
-        m_targetEnemies.RemoveAll(enemy => enemy == null);
+        // Destroy 済みの参照を除去
+        m_targetEnemies.RemoveAll(enemy => enemy == null || enemy.IsDead);
 
         Debug.Log(
             $"[SPressurePlateButton] 残りの対象敵数: {m_targetEnemies.Count}");
@@ -266,12 +225,16 @@ public class SPressurePlateButton : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 触れたのがプレイヤー（またはその子オブジェクト）か
+    /// ※transform.root で比較すると、プレイヤーと同じ親の下にある敵や弾でも押せてしまうため IsChildOf で判定する
+    /// </summary>
     private bool IsTargetActor(GameObject obj)
     {
         if (m_targetActor == null || obj == null) return false;
 
         return obj == m_targetActor ||
-               obj.transform.root == m_targetActor.transform.root;
+               obj.transform.IsChildOf(m_targetActor.transform);
     }
 
     /// <summary>
@@ -293,9 +256,9 @@ public class SPressurePlateButton : MonoBehaviour
         }
 
         // 実際に壁を破壊した場合だけ再生
-        if (hasWall)
+        if (hasWall && SSoundManager.Instance != null)
         {
-            SSoundManager.Instance?.PlaySE_WallVanish();
+            SSoundManager.Instance.PlaySE_WallVanish();
         }
     }
 
@@ -306,6 +269,8 @@ public class SPressurePlateButton : MonoBehaviour
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
     private void OnGUI()
     {
+        if (!m_showDebugGUI) return;
+
         float areaWidth = 220f;
         float areaHeight = 140f;
 
@@ -317,7 +282,7 @@ public class SPressurePlateButton : MonoBehaviour
 
         GUILayout.BeginArea(areaRect, GUI.skin.box);
 
-        GUILayout.Label("[ Button Debug ]");
+        GUILayout.Label($"[ Button Debug: {gameObject.name} ]");
 
         GUILayout.Label(
             $"Actor Found: {(m_targetActor != null ? "Yes" : "No")}");
@@ -354,31 +319,23 @@ public class SPressurePlateButton : MonoBehaviour
     }
 
     /// <summary>
-    /// デバッグ用：登録された敵を全て破棄
+    /// デバッグ用：登録された敵を全て倒す
     /// </summary>
     [ContextMenu("Debug: Force Kill All Enemies")]
     public void ForceKillEnemies()
     {
         Debug.Log("[Debug] 強制敵全滅を実行しました。");
 
-        if (m_targetEnemies != null)
+        foreach (var enemy in m_targetEnemies.ToArray())
         {
-            foreach (var enemy in m_targetEnemies.ToArray())
+            if (enemy != null)
             {
-                if (enemy != null)
-                {
-                    // Destroy により EnemyDeathObserver も通知される
-                    Destroy(enemy.gameObject);
-                }
+                // Kill() で OnDied が発火し、ボタン・ゲームマネージャーの両方に通知される
+                enemy.Kill();
             }
         }
 
-        // 破棄待ちを考慮し、次のフレームに全滅確認
-        if (m_enemyCheckCoroutine == null)
-        {
-            m_enemyCheckCoroutine =
-                StartCoroutine(CheckRemainingEnemies());
-        }
+        CheckRemainingEnemies();
     }
 
     /// <summary>
@@ -394,53 +351,4 @@ public class SPressurePlateButton : MonoBehaviour
         SetState(ButtonState.Pressed);
     }
 #endif
-
-    // ==========================================
-    // 敵の破棄を検知する内部ヘルパークラス
-    // ==========================================
-
-    private class EnemyDeathObserver : MonoBehaviour
-    {
-        private readonly List<SPressurePlateButton> m_listeners = new();
-
-        private bool m_destroyNotified;
-
-        /// <summary>
-        /// 監視先のボタンを登録
-        /// </summary>
-        public void Register(SPressurePlateButton listener)
-        {
-            if (listener == null) return;
-
-            if (!m_listeners.Contains(listener))
-            {
-                m_listeners.Add(listener);
-            }
-
-            // すでに破棄通知済みなら再通知
-            if (m_destroyNotified)
-            {
-                listener.OnEnemyDied();
-            }
-        }
-
-        private void OnDestroy()
-        {
-            m_destroyNotified = true;
-
-            Debug.Log(
-                $"[EnemyDeathObserver] {gameObject.name} の破棄を検知しました。");
-
-            // 通知先が複数ある場合も全て通知
-            foreach (var listener in m_listeners)
-            {
-                if (listener != null)
-                {
-                    listener.OnEnemyDied();
-                }
-            }
-
-            m_listeners.Clear();
-        }
-    }
 }

@@ -11,7 +11,7 @@ public class SSoundManager : MonoBehaviour
     public float bgmVolume = 0.5f;
 
     // 3. SE用音量
-    [Range(0f, 2f)]
+    [Range(0f, 3f)]
     public float seVolume = 1.5f;
 
     [Header("BGM Clips")]
@@ -43,6 +43,10 @@ public class SSoundManager : MonoBehaviour
 
     // ループSEを管理するための辞書
     private Dictionary<AudioClip, AudioSource> loopSESources = new Dictionary<AudioClip, AudioSource>();
+
+    // ループSEを「今いくつの発生源が鳴らしているか」の数
+    // (複数の敵が同じエンジン音を使うため、最後の1体が止めるまで鳴らし続ける)
+    private Dictionary<AudioClip, int> loopSERequestCounts = new Dictionary<AudioClip, int>();
 
     private void Awake()
     {
@@ -125,6 +129,9 @@ public class SSoundManager : MonoBehaviour
             loopSESources.Add(seClip, newSource);
         }
 
+        loopSERequestCounts.TryGetValue(seClip, out int count);
+        loopSERequestCounts[seClip] = count + 1;
+
         AudioSource targetSource = loopSESources[seClip];
         targetSource.volume = seVolume;
 
@@ -138,13 +145,16 @@ public class SSoundManager : MonoBehaviour
     {
         if (seClip == null) return;
 
-        if (loopSESources.ContainsKey(seClip))
+        loopSERequestCounts.TryGetValue(seClip, out int count);
+        count = Mathf.Max(0, count - 1);
+        loopSERequestCounts[seClip] = count;
+
+        // まだ他に鳴らしている発生源があれば止めない
+        if (count > 0) return;
+
+        if (loopSESources.TryGetValue(seClip, out AudioSource targetSource) && targetSource.isPlaying)
         {
-            AudioSource targetSource = loopSESources[seClip];
-            if (targetSource.isPlaying)
-            {
-                targetSource.Stop();
-            }
+            targetSource.Stop();
         }
     }
 

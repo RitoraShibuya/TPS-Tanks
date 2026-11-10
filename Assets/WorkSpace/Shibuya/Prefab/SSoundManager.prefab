@@ -44,7 +44,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fbe393b6f64d64b4890e5284ad0c4d53, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
-  bgmVolume: 0.5
+  bgmVolume: 0.2
   seVolume: 2
   bgmInGame: {fileID: 8300000, guid: 3a93f0ec0963de2409d17a9106fb872d, type: 3}
   bgmMenu: {fileID: 8300000, guid: 692b258297152d24992f3530cedc4a71, type: 3}
