@@ -1,5 +1,8 @@
-﻿using System;
+﻿
+using System;
 using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 
 public class SUIManager : MonoBehaviour
 {
@@ -16,6 +19,9 @@ public class SUIManager : MonoBehaviour
     private GameObject SCurrentWipeInstance;
     private GameObject SCurrentPauseInstance;
 
+    // 前回選択されていたUI
+    private GameObject SPreviousSelectedObject;
+
     private void Awake()
     {
         if (SInstance == null)
@@ -27,6 +33,75 @@ public class SUIManager : MonoBehaviour
         {
             Destroy(gameObject);
             return;
+        }
+    }
+
+    private void Update()
+    {
+        if (EventSystem.current == null)
+            return;
+
+        GameObject currentSelected =
+            EventSystem.current.currentSelectedGameObject;
+
+        if (currentSelected == SPreviousSelectedObject)
+            return;
+
+        // UI移動入力があった場合のみカーソル音を再生
+        if (currentSelected != null && SIsNavigationInput())
+        {
+            SPlayCursorSE();
+        }
+
+        SPreviousSelectedObject = currentSelected;
+    }
+
+    // キーボード・コントローラーのUI移動入力判定
+    private bool SIsNavigationInput()
+    {
+        // キーボード
+        if (Keyboard.current != null)
+        {
+            if (
+                Keyboard.current.upArrowKey.isPressed ||
+                Keyboard.current.downArrowKey.isPressed ||
+                Keyboard.current.leftArrowKey.isPressed ||
+                Keyboard.current.rightArrowKey.isPressed ||
+                Keyboard.current.wKey.isPressed ||
+                Keyboard.current.aKey.isPressed ||
+                Keyboard.current.sKey.isPressed ||
+                Keyboard.current.dKey.isPressed
+            )
+            {
+                return true;
+            }
+        }
+
+        // コントローラー
+        if (Gamepad.current != null)
+        {
+            // 十字キー
+            if (Gamepad.current.dpad.ReadValue().sqrMagnitude > 0.1f)
+            {
+                return true;
+            }
+
+            // 左スティック
+            if (Gamepad.current.leftStick.ReadValue().magnitude > 0.5f)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    // カーソル音再生
+    public void SPlayCursorSE()
+    {
+        if (SSoundManager.Instance != null)
+        {
+            SSoundManager.Instance.PlaySE_Cursor();
         }
     }
 
