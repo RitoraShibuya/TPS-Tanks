@@ -1,4 +1,3 @@
-
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -98,6 +97,9 @@ public class SPressurePlateButton : MonoBehaviour
                 SetVisibility(true);
                 SetColliderEnabled(true);
 
+                // ボタン出現音
+                SSoundManager.Instance?.PlaySE_SwitchAppear();
+
                 Debug.Log(
                     "[SPressurePlateButton] 敵が全滅したため、ボタンが出現しました。");
                 break;
@@ -105,6 +107,11 @@ public class SPressurePlateButton : MonoBehaviour
             case ButtonState.Pressed:
                 SetVisibility(false);
                 SetColliderEnabled(false);
+
+                // ボタン押下音
+                SSoundManager.Instance?.PlaySE_SwitchPressed();
+
+                // 対象の壁を破壊
                 DestroyWalls();
 
                 Debug.Log(
@@ -274,12 +281,21 @@ public class SPressurePlateButton : MonoBehaviour
     {
         if (m_targetWalls == null) return;
 
+        bool hasWall = false;
+
         foreach (var wall in m_targetWalls)
         {
             if (wall != null)
             {
                 Destroy(wall);
+                hasWall = true;
             }
+        }
+
+        // 実際に壁を破壊した場合だけ再生
+        if (hasWall)
+        {
+            SSoundManager.Instance?.PlaySE_WallVanish();
         }
     }
 
