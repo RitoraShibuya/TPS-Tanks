@@ -37,7 +37,7 @@ public class HelicopterEngine : MonoBehaviour
 
         // 実際の回転処理（Y軸を軸に回転）
         // モデルの向きが違う場合は Vector3.forward 等に変更してください
-        MaineRotor.Rotate(Vector3.up * currentSpeed * Time.deltaTime);
-        TailRotor.Rotate(Vector3.forward * currentSpeed * Time.deltaTime);
+        if (MaineRotor != null) MaineRotor.Rotate(Vector3.up * currentSpeed * Time.deltaTime);
+        if (TailRotor != null) TailRotor.Rotate(Vector3.forward * currentSpeed * Time.deltaTime);
     }
 }

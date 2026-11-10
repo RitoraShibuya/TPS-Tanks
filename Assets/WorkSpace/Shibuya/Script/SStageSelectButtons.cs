@@ -40,7 +40,7 @@ public class SStageSelectButtons : MonoBehaviour
         if (SProgressManager.SInstance != null)
         {
             SetupButtons(
-                SProgressManager.SInstance.GetStageStatusList(5)
+                SProgressManager.SInstance.GetStageStatusList()
             );
         }
 
@@ -91,8 +91,11 @@ public class SStageSelectButtons : MonoBehaviour
                 continue;
             }
 
-            // 未解放ステージはグレーアウトして操作不可
-            button.interactable = status.IsUnlocked;
+            // 未解放ステージ・シーンがまだ無いステージはグレーアウトして操作不可
+            bool hasScene = SGameManagerBase.CanLoadScene(
+                SGameManagerBase.GetStageSceneName(status.StageID));
+
+            button.interactable = status.IsUnlocked && hasScene;
         }
     }
 

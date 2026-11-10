@@ -9,10 +9,6 @@ public class TankMovement : MonoBehaviour
     public InputAction aimAction = new InputAction("Aim");
     public InputAction fireAction = new InputAction("Fire");
 
-    [Header("入力設定Keyborad (Input System)")]
-    private InputActionReference moveActionKeyboard;
-    private InputActionReference aimActionKeyboard;
-
     [Header("移動・回転設定 (Lスティック)")]
     public float moveSpeed = 5f;
     public float rotationSpeed = 360f;
@@ -20,6 +16,7 @@ public class TankMovement : MonoBehaviour
 
     [Header("砲台・カメラ設定 (Rスティック)")]
     public float aimHorizontalSpeed = 120f;
+    [Tooltip("※現在は未使用。仰角はスティックの倒し量に応じて直接決まる")]
     public float aimVerticalSpeed = 90f;
     public float maxElevation = 30f;
     public float minElevation = -10f;
@@ -123,24 +120,53 @@ public class TankMovement : MonoBehaviour
     [Header("値チェック")]
     public Vector2 Val1 = Vector2.zero;
 
+    [Header("サウンド (SSoundManager の SE を使用)")]
+    [Tooltip("壁などにぶつかった時の衝突音の最短間隔(秒)。連続で鳴りすぎないようにする")]
+    [SerializeField]
+    private float collisionSoundInterval = 0.3f;
+
+    [Tooltip("接触面の法線の上向き成分がこの値未満なら「壁」とみなして衝突音を鳴らす (地面や坂では鳴らさない)")]
+    [SerializeField, Range(0f, 1f)]
+    private float wallNormalThreshold = 0.5f;
+
+    // ループSEの再生状態 (SSoundManager の Start/End を必ず対にするため)
+    private bool isEngineSoundPlaying = false;
+    private bool isTurretSoundPlaying = false;
+
+    // 砲塔が今フレーム旋回したか (Update で判定し、サウンド制御に使う)
+    private bool isTurretRotatingThisFrame = false;
+
+    private float nextCollisionSoundTime = 0f;
+
     private void Awake()
     {
-        moveAction.AddBinding("<Gamepad>/leftStick");
-        moveAction.AddCompositeBinding("2DVector")
-            .With("Up", "<Keyboard>/w")
-            .With("Down", "<Keyboard>/s")
-            .With("Left", "<Keyboard>/a")
-            .With("Right", "<Keyboard>/d");
+        // Inspector でバインドが設定されていない場合だけ既定のバインドを追加する
+        // (Inspector側にも設定があると二重登録になるため)
+        if (moveAction.bindings.Count == 0)
+        {
+            moveAction.AddBinding("<Gamepad>/leftStick");
+            moveAction.AddCompositeBinding("2DVector")
+                .With("Up", "<Keyboard>/w")
+                .With("Down", "<Keyboard>/s")
+                .With("Left", "<Keyboard>/a")
+                .With("Right", "<Keyboard>/d");
+        }
 
-        aimAction.AddBinding("<Gamepad>/rightStick");
-        aimAction.AddCompositeBinding("2DVector")
-            .With("Up", "<Keyboard>/upArrow")
-            .With("Down", "<Keyboard>/downArrow")
-            .With("Left", "<Keyboard>/leftArrow")
-            .With("Right", "<Keyboard>/rightArrow");
+        if (aimAction.bindings.Count == 0)
+        {
+            aimAction.AddBinding("<Gamepad>/rightStick");
+            aimAction.AddCompositeBinding("2DVector")
+                .With("Up", "<Keyboard>/upArrow")
+                .With("Down", "<Keyboard>/downArrow")
+                .With("Left", "<Keyboard>/leftArrow")
+                .With("Right", "<Keyboard>/rightArrow");
+        }
 
-        fireAction.AddBinding("<Gamepad>/leftShoulder");
-        fireAction.AddBinding("<Keyboard>/r");
+        if (fireAction.bindings.Count == 0)
+        {
+            fireAction.AddBinding("<Gamepad>/leftShoulder");
+            fireAction.AddBinding("<Keyboard>/r");
+        }
 
         if (health == null)
         {
@@ -152,6 +178,20 @@ public class TankMovement : MonoBehaviour
         {
             health = gameObject.AddComponent<HHelth>();
         }
+
+        // 被弾・死亡の音はポーズ中やゲーム終了時(TankMovement 無効中)でも鳴らすため、
+        // OnEnable/OnDisable ではなく Awake/OnDestroy で購読する
+        health.OnDamaged += OnDamagedSound;
+        health.OnDie += OnDieSound;
+    }
+
+    private void OnDestroy()
+    {
+        if (health != null)
+        {
+            health.OnDamaged -= OnDamagedSound;
+            health.OnDie -= OnDieSound;
+        }
     }
 
     private void OnEnable()
@@ -159,38 +199,105 @@ public class TankMovement : MonoBehaviour
         moveAction.Enable();
         aimAction.Enable();
         fireAction.Enable();
-        fireAction.performed += OnFirePerformd;
-
-        if (health != null)
-        {
-            health.OnDie += Die;
-        }
+        fireAction.performed += OnFirePerformed;
     }
 
     private void OnDisable()
     {
         moveAction.Disable();
         aimAction.Disable();
-        fireAction.performed -= OnFirePerformd;
+        fireAction.performed -= OnFirePerformed;
         fireAction.Disable();
 
-        if (health != null)
-        {
-            health.OnDie -= Die;
-        }
+        // ポーズ・開始時の操作ロック・ゲーム終了で無効化されたらループ音を止める
+        SetEngineSound(false);
+        SetTurretSound(false);
     }
 
-    private void Die()
+    // ==========================================
+    // サウンド
+    // ==========================================
+
+    private void SetEngineSound(bool play)
     {
-        Debug.Log("Playerが死亡した！");
+        if (play == isEngineSoundPlaying) return;
+        if (SSoundManager.Instance == null) { isEngineSoundPlaying = false; return; }
 
-        // ステージのゲームマネージャーにゲームオーバーを通知
-        SInGameManagerBase gameManager = FindFirstObjectByType<SInGameManagerBase>();
-        if (gameManager != null)
+        if (play) SSoundManager.Instance.PlaySE_TankMoveEngine_Start();
+        else SSoundManager.Instance.PlaySE_TankMoveEngine_End();
+
+        isEngineSoundPlaying = play;
+    }
+
+    private void SetTurretSound(bool play)
+    {
+        if (play == isTurretSoundPlaying) return;
+        if (SSoundManager.Instance == null) { isTurretSoundPlaying = false; return; }
+
+        if (play) SSoundManager.Instance.PlaySE_TurretRotate_Start();
+        else SSoundManager.Instance.PlaySE_TurretRotate_End();
+
+        isTurretSoundPlaying = play;
+    }
+
+    /// <summary>
+    /// 被弾音（とどめの1発は破壊音だけを鳴らす）
+    /// </summary>
+    private void OnDamagedSound(int remainingHealth)
+    {
+        if (remainingHealth <= 0) return;
+
+        if (SSoundManager.Instance != null)
         {
-            gameManager.OnGameOver();
+            SSoundManager.Instance.PlaySE_Impact();
         }
     }
+
+    /// <summary>
+    /// 破壊音
+    /// </summary>
+    private void OnDieSound()
+    {
+        SetEngineSound(false);
+        SetTurretSound(false);
+
+        if (SSoundManager.Instance != null)
+        {
+            SSoundManager.Instance.PlaySE_TankDestroy();
+        }
+    }
+
+    /// <summary>
+    /// 壁や障害物にぶつかった時の衝突音（地面・坂への接地では鳴らさない）
+    /// </summary>
+    private void OnCollisionEnter(Collision collision)
+    {
+        if (!isActiveAndEnabled) return;
+        if (Time.time < nextCollisionSoundTime) return;
+        if (collision.contactCount == 0) return;
+
+        bool hitWall = false;
+        for (int i = 0; i < collision.contactCount; i++)
+        {
+            if (collision.GetContact(i).normal.y < wallNormalThreshold)
+            {
+                hitWall = true;
+                break;
+            }
+        }
+
+        if (!hitWall) return;
+
+        nextCollisionSoundTime = Time.time + collisionSoundInterval;
+
+        if (SSoundManager.Instance != null)
+        {
+            SSoundManager.Instance.PlaySE_Collision();
+        }
+    }
+
+    // ※プレイヤー死亡時のゲームオーバー通知は SInGameManagerBase が HHelth.OnDie を監視して行う。
+    //   (TankMovement はポーズ中などに無効化されるため、ここで購読すると通知を取りこぼす)
 
     void Start()
     {
@@ -215,7 +322,7 @@ public class TankMovement : MonoBehaviour
 
         if (mainCamera == null)
         {
-            mainCamera = Camera.main.transform;
+            Debug.LogWarning("[TankMovement] カメラが見つかりません。移動はワールド座標基準になります。");
         }
 
         // 車体の初期の向き (180度反転モデルなのでマイナス)
@@ -248,6 +355,10 @@ public class TankMovement : MonoBehaviour
         // ============================================
         Vector2 rightInput = aimAction.ReadValue<Vector2>();
         Val1 = rightInput;
+
+        // 旋回音の判定用に、今フレームの変化前の向き・仰角を控えておく
+        Vector3 previousTurretForward = currentTurretForward;
+        float previousPitch = currentPitch;
         if (rightInput.magnitude >= deadZone)
         {
             // 左右：論理的な「向いている方向」を回転
@@ -299,6 +410,13 @@ public class TankMovement : MonoBehaviour
         }
 
         currentPitch = Mathf.Clamp(currentPitch, minElevation, maxElevation);
+
+        // 砲塔が左右に回った・砲身が上下した場合だけ旋回音を鳴らす
+        isTurretRotatingThisFrame =
+            Vector3.Angle(previousTurretForward, currentTurretForward) > 0.01f ||
+            Mathf.Abs(currentPitch - previousPitch) > 0.01f;
+
+        SetTurretSound(isTurretRotatingThisFrame);
     }
 
     void FixedUpdate()
@@ -308,6 +426,9 @@ public class TankMovement : MonoBehaviour
         // ============================================
         Vector2 leftInput = moveAction.ReadValue<Vector2>();
         bool isMoving = leftInput.magnitude >= deadZone;
+
+        // Lスティック入力中（前進・その場旋回）はエンジン音を鳴らす
+        SetEngineSound(isMoving);
 
         // ブレーキ処理（移動していない時はXとZをロック）
         if (!isMoving)
@@ -361,8 +482,8 @@ public class TankMovement : MonoBehaviour
         if (isMoving)
         {
             Vector2 moveInput = leftInput.normalized;
-            Vector3 camForward = mainCamera.forward;
-            Vector3 camRight = mainCamera.right;
+            Vector3 camForward = mainCamera != null ? mainCamera.forward : Vector3.forward;
+            Vector3 camRight = mainCamera != null ? mainCamera.right : Vector3.right;
 
             camForward.y = 0;
             camRight.y = 0;
@@ -461,10 +582,16 @@ public class TankMovement : MonoBehaviour
         UpdateLandingPoint();
     }
 
-    void OnFirePerformd(InputAction.CallbackContext context)
+    void OnFirePerformed(InputAction.CallbackContext context)
     {
         if (Time.time < nextFireTime)
         {
+            return;
+        }
+
+        if (firePosition == null || Bullet == null)
+        {
+            Debug.LogError("[TankMovement] firePosition または Bullet が設定されていません！");
             return;
         }
 
@@ -480,6 +607,11 @@ public class TankMovement : MonoBehaviour
             bulletPosition,
             firePosition.rotation
         );
+
+        if (SSoundManager.Instance != null)
+        {
+            SSoundManager.Instance.PlaySE_Shoot();
+        }
 
         TankProjectile projectile = bullet.GetComponent<TankProjectile>();
 
@@ -653,10 +785,11 @@ public class TankMovement : MonoBehaviour
 
         fireCooldown = manager.GetFloat("fireCooldown", fireCooldown);
 
+        // CSVに無い場合は Inspector の cameraOffset をそのまま使う
         cameraOffset = new Vector3(
-            0f,
-            manager.GetFloat("cameraHeight", 1.5f),
-            -manager.GetFloat("cameraDistance", 6f)
+            cameraOffset.x,
+            manager.GetFloat("cameraHeight", cameraOffset.y),
+            -manager.GetFloat("cameraDistance", -cameraOffset.z)
         );
 
         Debug.Log($"移動速度: {moveSpeed}");

@@ -1,16 +1,14 @@
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.AI;
 
-[RequireComponent(typeof(NavMeshAgent))]
-public class FlyingTankAI : EnemyBase
+/// <summary>
+/// 空中を飛ぶ敵（ヘリ）
+/// WayPoint を巡回し、プレイヤーを見つけたら接近して上空から射撃する
+/// </summary>
+public class FlyingTankAI : PatrolEnemyBase
 {
-    public enum ModelForwardAxis { Forward, Right, Left, Back }
-    public enum PatrolType { Loop, PingPong, Random }
-
     [Header("パーツ設定")]
     [SerializeField] private Transform barrelTransform;     // 上下に回転させたい砲身パーツ
-    [SerializeField] private Transform muzzleTransform;     // 発射位置
 
     [Header("プロペラ・ローター設定")]
     [Tooltip("回転させたいプロペラやローターのTransformを指定")]
@@ -19,10 +17,6 @@ public class FlyingTankAI : EnemyBase
     [SerializeField] private Vector3 propellerRotateAxis = Vector3.up;
     [Tooltip("プロペラの回転速度")]
     [SerializeField] private float propellerSpeed = 1000f;
-
-    [Header("モデルの正面軸補正設定")]
-    [Tooltip("飛行体の正面（カメラ・モデルの向いている方向）のローカル軸を指定")]
-    [SerializeField] private ModelForwardAxis modelForwardAxis = ModelForwardAxis.Forward;
 
     [Header("飛行・移動設定")]
     [SerializeField] private float flyHeight = 8f;           // 飛行高度
@@ -40,51 +34,14 @@ public class FlyingTankAI : EnemyBase
     [Tooltip("砲身が下に向ける最大角度（例: 60度に設定すると、本体20度+砲身60度＝最大80度まで下を向く）")]
     [SerializeField] private float maxBarrelPitch = 60f;
 
-    [Header("WayPoint（巡回）設定")]
-    [SerializeField] private List<Transform> waypoints = new List<Transform>();
-    [SerializeField] private PatrolType patrolType = PatrolType.Loop;
-    [SerializeField] private float waypointArriveDistance = 2f;
-    [SerializeField] private float waypointWaitTime = 2f;
-
-    [Header("索敵・前方視界設定")]
-    [SerializeField] private float sightDistance = 25f;
-    [SerializeField] private float sightAngle = 120f;
-
-    [Header("射撃パラメータ")]
-    [SerializeField] private GameObject bulletPrefab;
-    [SerializeField] private float bulletSpeed = 35f;
-    [SerializeField] private float attackRange = 25f;
-    [SerializeField] private float fireRate = 1.2f;
-
-    [Header("遮蔽判定設定")]
-    [Tooltip("壁や障害物のみ（Default, Environment等）を選択。EverythingやEnemy/Playerは含めないでください。")]
-    [SerializeField] private LayerMask obstacleLayer;
-
-    private float nextFireTime;
     private bool isTargetInAngleLimit = true;
 
-    // WayPoint巡回用
-    private int currentWaypointIndex = 0;
-    private bool isPatrolReverse = false;
-    private float waitTimer = 0f;
-    private bool isWaiting = false;
-
-    // 検知フラグ
-    private bool isPlayerDetected = false;
-
-    // NavMeshAgent参照
-    private NavMeshAgent agent;
+    protected override float WaypointGizmoHeight => flyHeight;
 
     protected override void Awake()
     {
         base.Awake();
 
-        if (obstacleLayer.value == 0)
-        {
-            obstacleLayer = LayerMask.GetMask("Default");
-        }
-
-        agent = GetComponent<NavMeshAgent>();
         if (agent != null)
         {
             agent.speed = moveSpeed;
@@ -113,58 +70,41 @@ public class FlyingTankAI : EnemyBase
             Vector3 targetPosFlat = new Vector3(target.position.x, 0f, target.position.z);
             float horizontalDistance = Vector3.Distance(selfPosFlat, targetPosFlat);
 
-            // ターゲット捕捉時は【常に照準（AimAtTarget）を合わせ続ける】
+            // ターゲット捕捉時は常に照準を合わせ続ける
             AimAtTarget();
 
-            // 攻撃範囲外ならターゲットへ向かってNavMesh移動
-            if (horizontalDistance > attackRange)
+            if (IsAgentReady)
             {
-                if (agent != null && agent.isOnNavMesh)
+                if (horizontalDistance > attackRange)
                 {
-                    agent.isStopped = false; // ★移動再開
+                    // 攻撃範囲外ならターゲットへ向かって移動
+                    agent.isStopped = false;
+                    agent.SetDestination(target.position);
                 }
-                MoveToPositionOnly(target.position);
-            }
-            else
-            {
-                // ★ 攻撃範囲内なら明確に停止
-                if (agent != null && agent.isOnNavMesh)
+                else
                 {
+                    // 攻撃範囲内なら停止
                     agent.isStopped = true;
                     if (agent.hasPath) agent.ResetPath();
                 }
             }
 
-            // 攻撃範囲内かつ視線（Raycast）が通っているなら射撃チェック
-            bool hasLineOfSight = HasLineOfSight();
-
-            if (horizontalDistance <= attackRange && hasLineOfSight)
+            // 攻撃範囲内・視線が通っている・砲身の角度制限内なら射撃
+            if (horizontalDistance <= attackRange && isTargetInAngleLimit && HasLineOfSight())
             {
-                if (isTargetInAngleLimit && Time.time >= nextFireTime)
-                {
-                    nextFireTime = Time.time + fireRate;
-                    ExecuteShoot();
-                }
+                TryFire();
             }
         }
-        else
+        else if (HasValidWaypoints())
         {
-            if (HasValidWaypoints())
-            {
-                PatrolWaypoints();
-            }
+            PatrolWaypoints();
         }
     }
 
-    private void MoveToPositionOnly(Vector3 destination)
-    {
-        if (agent != null && agent.isOnNavMesh)
-        {
-            agent.SetDestination(destination);
-        }
-    }
-
-    private void MoveToPatrolPosition(Vector3 destination)
+    /// <summary>
+    /// 巡回時：砲身を水平に戻しつつ、進行方向へ機体を向ける
+    /// </summary>
+    protected override void MoveToPatrolPoint(Vector3 destination)
     {
         if (barrelTransform != null)
         {
@@ -175,27 +115,15 @@ public class FlyingTankAI : EnemyBase
             );
         }
 
-        if (agent != null && agent.isOnNavMesh)
+        base.MoveToPatrolPoint(destination);
+
+        Vector3 moveDirection = agent.velocity;
+        moveDirection.y = 0f;
+
+        if (moveDirection.sqrMagnitude > 0.01f)
         {
-            agent.isStopped = false;
-            agent.SetDestination(destination);
-
-            Vector3 moveDirection = agent.velocity.normalized;
-            moveDirection.y = 0f;
-
-            if (moveDirection.sqrMagnitude > 0.01f)
-            {
-                Quaternion targetRot = Quaternion.LookRotation(moveDirection);
-
-                switch (modelForwardAxis)
-                {
-                    case ModelForwardAxis.Right: targetRot *= Quaternion.Euler(0, -90, 0); break;
-                    case ModelForwardAxis.Left: targetRot *= Quaternion.Euler(0, 90, 0); break;
-                    case ModelForwardAxis.Back: targetRot *= Quaternion.Euler(0, 180, 0); break;
-                }
-
-                transform.rotation = Quaternion.Slerp(transform.rotation, targetRot, Time.deltaTime * rotationSpeed);
-            }
+            Quaternion targetRot = Quaternion.LookRotation(moveDirection.normalized) * GetAxisCorrection();
+            transform.rotation = Quaternion.Slerp(transform.rotation, targetRot, Time.deltaTime * rotationSpeed);
         }
     }
 
@@ -217,15 +145,7 @@ public class FlyingTankAI : EnemyBase
 
             Quaternion pitchRotation = Quaternion.Euler(clampedPitch, 0f, 0f);
 
-            Quaternion axisCorrection = Quaternion.identity;
-            switch (modelForwardAxis)
-            {
-                case ModelForwardAxis.Right: axisCorrection = Quaternion.Euler(0, -90, 0); break;
-                case ModelForwardAxis.Left: axisCorrection = Quaternion.Euler(0, 90, 0); break;
-                case ModelForwardAxis.Back: axisCorrection = Quaternion.Euler(0, 180, 0); break;
-            }
-
-            Quaternion targetBodyRot = yawRotation * pitchRotation * axisCorrection;
+            Quaternion targetBodyRot = yawRotation * pitchRotation * GetAxisCorrection();
             transform.rotation = Quaternion.Slerp(transform.rotation, targetBodyRot, Time.deltaTime * rotationSpeed);
         }
 
@@ -238,15 +158,13 @@ public class FlyingTankAI : EnemyBase
             Vector3 localDir = transform.InverseTransformDirection(relativeTargetDir);
             float targetBarrelPitch = -Mathf.Atan2(localDir.y, Mathf.Sqrt(localDir.x * localDir.x + localDir.z * localDir.z)) * Mathf.Rad2Deg;
 
-            // ★ 修正: 角度の制限判定を論理式で確実に計算
-            isTargetInAngleLimit = (targetBarrelPitch >= minBarrelPitch && targetBarrelPitch <= maxBarrelPitch);
+            isTargetInAngleLimit = targetBarrelPitch >= minBarrelPitch && targetBarrelPitch <= maxBarrelPitch;
 
             float clampedBarrelPitch = Mathf.Clamp(targetBarrelPitch, minBarrelPitch, maxBarrelPitch);
 
-            Quaternion targetBarrelRot = Quaternion.Euler(clampedBarrelPitch, 0f, 0f);
             barrelTransform.localRotation = Quaternion.RotateTowards(
                 barrelTransform.localRotation,
-                targetBarrelRot,
+                Quaternion.Euler(clampedBarrelPitch, 0f, 0f),
                 barrelRotationSpeed * Time.deltaTime
             );
         }
@@ -270,198 +188,15 @@ public class FlyingTankAI : EnemyBase
         }
     }
 
-    private bool IsTargetInSight()
+    protected override void OnDrawGizmosSelected()
     {
-        if (target == null) return false;
-
-        Vector3 directionToTarget = target.position - transform.position;
-        float distance = directionToTarget.magnitude;
-        if (distance > sightDistance) return false;
-
-        Vector3 horizontalDir = directionToTarget;
-        horizontalDir.y = 0f;
-        horizontalDir.Normalize();
-
-        Vector3 forward = GetModelForward(transform);
-        forward.y = 0f;
-        forward.Normalize();
-
-        float angle = Vector3.Angle(forward, horizontalDir);
-        if (angle > (sightAngle / 2f)) return false;
-
-        return HasLineOfSight();
-    }
-
-    private bool HasLineOfSight()
-    {
-        if (target == null) return false;
-
-        Vector3 origin = muzzleTransform != null ? muzzleTransform.position : transform.position;
-        Vector3 targetCenterPos = target.position + Vector3.up * 0.5f;
-        Vector3 dir = (targetCenterPos - origin).normalized;
-        float dist = Vector3.Distance(origin, targetCenterPos);
-
-        // ★ 判定用オフセット（自身のコライダーとの即時接触を防止）
-        Vector3 rayStart = origin + dir * 0.2f;
-
-        RaycastHit[] hits = Physics.RaycastAll(rayStart, dir, Mathf.Max(0f, dist - 0.2f), obstacleLayer);
-
-        foreach (var hit in hits)
-        {
-            if (hit.transform.IsChildOf(transform) || hit.transform == transform) continue;
-
-            if (!hit.transform.IsChildOf(target) && hit.transform != target && !hit.transform.CompareTag(playerTag))
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    private Vector3 GetModelForward(Transform t)
-    {
-        switch (modelForwardAxis)
-        {
-            case ModelForwardAxis.Right: return t.right;
-            case ModelForwardAxis.Left: return -t.right;
-            case ModelForwardAxis.Back: return -t.forward;
-            default: return t.forward;
-        }
-    }
-
-    private bool HasValidWaypoints()
-    {
-        if (waypoints == null || waypoints.Count == 0) return false;
-        foreach (var wp in waypoints)
-        {
-            if (wp != null) return true;
-        }
-        return false;
-    }
-
-    private void PatrolWaypoints()
-    {
-        if (isWaiting)
-        {
-            waitTimer += Time.deltaTime;
-            if (waitTimer >= waypointWaitTime)
-            {
-                isWaiting = false;
-                waitTimer = 0f;
-                SetNextWaypoint();
-            }
-            return;
-        }
-
-        Transform currentPoint = waypoints[currentWaypointIndex];
-        if (currentPoint == null)
-        {
-            SetNextWaypoint();
-            return;
-        }
-
-        MoveToPatrolPosition(currentPoint.position);
-
-        if (!agent.pathPending && agent.remainingDistance <= waypointArriveDistance)
-        {
-            isWaiting = true;
-        }
-    }
-
-    private void SetNextWaypoint()
-    {
-        if (waypoints == null || waypoints.Count <= 1) return;
-
-        switch (patrolType)
-        {
-            case PatrolType.Loop:
-                currentWaypointIndex = (currentWaypointIndex + 1) % waypoints.Count;
-                break;
-
-            case PatrolType.PingPong:
-                if (isPatrolReverse)
-                {
-                    currentWaypointIndex--;
-                    if (currentWaypointIndex <= 0)
-                    {
-                        currentWaypointIndex = 0;
-                        isPatrolReverse = false;
-                    }
-                }
-                else
-                {
-                    currentWaypointIndex++;
-                    if (currentWaypointIndex >= waypoints.Count - 1)
-                    {
-                        currentWaypointIndex = waypoints.Count - 1;
-                        isPatrolReverse = true;
-                    }
-                }
-                break;
-
-            case PatrolType.Random:
-                currentWaypointIndex = Random.Range(0, waypoints.Count);
-                break;
-        }
-    }
-
-    private void ExecuteShoot()
-    {
-        if (muzzleTransform == null || bulletPrefab == null || target == null) return;
-
-        Vector3 shootDirection = (GetTargetAimPoint() - muzzleTransform.position).normalized;
-        Quaternion bulletRotation = Quaternion.LookRotation(shootDirection);
-
-        GameObject bulletObj = Instantiate(bulletPrefab, muzzleTransform.position, bulletRotation);
-        Debug.Log($"[FlyingTankAI] ★弾の生成に成功しました: {bulletObj.name}");
-
-        if (bulletObj.TryGetComponent(out SharedBullet bullet))
-        {
-            bullet.Launch(shootDirection, bulletSpeed, gameObject);
-        }
-    }
-
-    private void OnDrawGizmosSelected()
-    {
-        Gizmos.color = Color.yellow;
-        Vector3 forward = GetModelForward(transform);
-        Vector3 leftRay = Quaternion.Euler(0, -sightAngle / 2f, 0) * forward;
-        Vector3 rightRay = Quaternion.Euler(0, sightAngle / 2f, 0) * forward;
-
-        Gizmos.DrawRay(transform.position, leftRay * sightDistance);
-        Gizmos.DrawRay(transform.position, rightRay * sightDistance);
-        Gizmos.DrawRay(transform.position, forward * sightDistance);
-
-        Gizmos.color = Color.red;
-        Gizmos.DrawWireSphere(transform.position, attackRange);
+        base.OnDrawGizmosSelected();
 
         if (target != null)
         {
             Vector3 origin = muzzleTransform != null ? muzzleTransform.position : transform.position;
-            Vector3 targetCenterPos = target.position + Vector3.up * 0.5f;
             Gizmos.color = HasLineOfSight() ? Color.green : Color.red;
-            Gizmos.DrawLine(origin, targetCenterPos);
-        }
-
-        if (waypoints != null && waypoints.Count > 0)
-        {
-            Gizmos.color = Color.cyan;
-            for (int i = 0; i < waypoints.Count; i++)
-            {
-                if (waypoints[i] != null)
-                {
-                    Vector3 wpPos = waypoints[i].position + Vector3.up * flyHeight;
-                    Gizmos.DrawWireSphere(wpPos, 0.5f);
-
-                    int next = (i + 1) % waypoints.Count;
-                    if (waypoints[next] != null)
-                    {
-                        Vector3 nextWpPos = waypoints[next].position + Vector3.up * flyHeight;
-                        Gizmos.DrawLine(wpPos, nextWpPos);
-                    }
-                }
-            }
+            Gizmos.DrawLine(origin, GetTargetAimPoint());
         }
     }
 }

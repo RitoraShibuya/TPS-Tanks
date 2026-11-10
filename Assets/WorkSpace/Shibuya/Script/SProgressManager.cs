@@ -17,6 +17,14 @@ public class SProgressManager : MonoBehaviour
 {
     public static SProgressManager SInstance { get; private set; }
 
+    /// <summary>
+    /// 本編ステージの数（ID 1 ～ SStageCount）。チュートリアルは ID 0
+    /// ステージ数を変える時はここだけを変更する
+    /// </summary>
+    public const int SStageCount = 4;
+
+    // ※進行状況はメモリ上のみで保持している（ゲームを終了するとリセットされる）
+
     // SIsTutorialCleared を廃止し、SStages のみに一本化
     public List<SStageData> SStages = new();
 
@@ -51,11 +59,11 @@ public class SProgressManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 指定IDのステージが解放されているか（1つ前のステージがクリア済み、またはID0なら解放）
+    /// 指定IDのステージが解放されているか（1つ前のステージがクリア済みなら解放）
     /// </summary>
     public bool IsStageUnlocked(int id)
     {
-        if (id <= 1) return true; // チュートリアル(ID:0)は無条件で解放
+        if (id <= 1) return true; // チュートリアル(ID:0)とステージ1(ID:1)は無条件で解放
         return IsStageCleared(id - 1); // 1つ前のステージがクリア済みなら解放
     }
 
@@ -67,8 +75,11 @@ public class SProgressManager : MonoBehaviour
     /// <summary>
     /// 今後 UI 側でボタンのロック状態を生成するための全ステージ状態リストを取得
     /// </summary>
-    public List<StageStatusInfo> GetStageStatusList(int maxStageCount = 5)
+    public List<StageStatusInfo> GetStageStatusList()
     {
+        // ID 0(チュートリアル) ～ SStageCount までを返す
+        int maxStageCount = SStageCount + 1;
+
         List<StageStatusInfo> list = new List<StageStatusInfo>();
         for (int i = 0; i < maxStageCount; i++)
         {
