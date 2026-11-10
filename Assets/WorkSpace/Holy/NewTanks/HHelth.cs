@@ -12,6 +12,9 @@ public class HHelth : MonoBehaviour
     // 死亡イベント
     public event Action OnDie;
 
+    // 被弾イベント (引数は残り体力)
+    public event Action<int> OnDamaged;
+
     private bool isDead = false;
 
     public int Health => health;
@@ -31,6 +34,9 @@ public class HHelth : MonoBehaviour
 
 
         Debug.Log(gameObject.name + " 残り体力: " + health);
+
+        // 被弾イベントを発行 (HPのUI更新など)
+        OnDamaged?.Invoke(health);
 
         if (health <= 0)
         {

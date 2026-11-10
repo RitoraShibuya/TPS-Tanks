@@ -7,9 +7,6 @@ public class CameraOcclusionFade : MonoBehaviour
     [SerializeField]
     private Transform target;
 
-    [SerializeField]
-    private Camera targetCamera;
-
     [Header("検出設定")]
     [SerializeField]
     private LayerMask obstacleLayers = -1;
@@ -35,14 +32,14 @@ public class CameraOcclusionFade : MonoBehaviour
 
     private void LateUpdate()
     {
-        if (target == null || targetCamera == null)
+        if (target == null || this == null)
         {
             return;
         }
 
         currentRenderers.Clear();
 
-        Vector3 cameraPosition = targetCamera.transform.position;
+        Vector3 cameraPosition = this.transform.position;
         Vector3 targetPosition =
             target.position + Vector3.up * rayOffset;
 

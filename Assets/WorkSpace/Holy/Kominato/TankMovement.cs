@@ -23,7 +23,8 @@ public class TankMovement : MonoBehaviour
     public float aimVerticalSpeed = 90f;
     public float maxElevation = 30f;
     public float minElevation = -10f;
-    public float autoResetSpeed = 5f;
+    [Tooltip("スティックを離した時に仰角を0度へ戻す速度 (度/秒)")]
+    public float autoResetSpeed = 90f;
 
     [Header("カメラのオフセット位置")]
     public Vector3 cameraOffset = new Vector3(0f, 3f, -8f);
@@ -53,9 +54,27 @@ public class TankMovement : MonoBehaviour
     public float rayLength = 2.0f;
     public float rayOffsetHeight = 1.0f;
 
+    [Tooltip("足元からこの距離以内に地面があれば接地とみなす (m)")]
+    public float groundCheckDistance = 0.3f;
+
+    [Tooltip("坂に合わせて車体・砲台を傾ける速さ (度/秒)。坂の境目でのガタつきを抑える")]
+    public float tiltSmoothSpeed = 120f;
+
+    [Tooltip("入力方向にこの角度(度)以内まで向いたら前進を開始する")]
+    public float moveAngleThreshold = 1.0f;
+
     private Rigidbody rb;
     private Vector3 currentTurretForward;
     private float currentPitch = 0f;
+
+    // 坂道の傾き (FixedUpdate で計算し、LateUpdate で砲台に使う)
+    private Quaternion currentTiltRotation = Quaternion.identity;
+
+    // 車体の水平方向の向き (傾きとは分けて管理する)
+    private Quaternion currentBodyYaw = Quaternion.identity;
+
+    // モデルの180度反転オフセット
+    private static readonly Quaternion offsetRot = Quaternion.Euler(0, 180, 0);
 
     [Header("着弾レティクル")]
     [SerializeField]
@@ -187,10 +206,21 @@ public class TankMovement : MonoBehaviour
 
         rb.constraints = RigidbodyConstraints.FreezeRotation;
 
+        // 重力は常にON (坂道では接地中に速度を消して滑りを止める)
+        rb.useGravity = true;
+
         if (mainCamera == null)
         {
             mainCamera = Camera.main.transform;
         }
+
+        // 車体の初期の向き (180度反転モデルなのでマイナス)
+        Vector3 bodyForward = tankBody != null
+            ? Vector3.ProjectOnPlane(-tankBody.forward, Vector3.up)
+            : Vector3.ProjectOnPlane(transform.forward, Vector3.up);
+        currentBodyYaw = bodyForward.sqrMagnitude > 0.01f
+            ? Quaternion.LookRotation(bodyForward.normalized, Vector3.up)
+            : Quaternion.identity;
 
         // 初期方向の取得（安全対策として値がゼロにならないよう保証）
         if (tankTurret != null)
@@ -229,25 +259,33 @@ public class TankMovement : MonoBehaviour
             }
             else
             {
-                float pitchInput = Mathf.Sign(rightInput.y) *
+                // 入力の強さ (0〜1) と方向 (上=+ / 下=-)
+                float pitchSign = Mathf.Sign(rightInput.y);
+                float pitchInput =
                     (Mathf.Abs(rightInput.y) - deadZone) / (1.0f - deadZone);
 
+                float pitchRate;
                 if (pitchInput <= radiusChange)
                 {
-                    currentPitch = maxElevation * pitchInput;
+                    pitchRate = pitchInput;
                 }
                 else
                 {
-                    currentPitch = maxElevation * (radiusChange + (pitchInput - radiusChange) * 0.5f);
+                    pitchRate = radiusChange + (pitchInput - radiusChange) * 0.5f;
                 }
+
+                // 上方向は仰角(maxElevation)、下方向は俯角(minElevation)を上限にする
+                float pitchLimit = pitchSign > 0f ? maxElevation : -minElevation;
+                currentPitch = pitchSign * pitchLimit * pitchRate;
             }
         }
         else
         {
-            // ニュートラル時に水平へ戻る
-            currentPitch = Mathf.Lerp(currentPitch, 0f, autoResetSpeed * Time.deltaTime);
+            // ニュートラル時に水平へ戻る (autoResetSpeed = 度/秒)
+            currentPitch = Mathf.MoveTowards(currentPitch, 0f, autoResetSpeed * Time.deltaTime);
         }
-        UpdateLandingPoint();
+
+        currentPitch = Mathf.Clamp(currentPitch, minElevation, maxElevation);
     }
 
     void FixedUpdate()
@@ -272,25 +310,37 @@ public class TankMovement : MonoBehaviour
         // 坂道判定 (停止中も砲台の傾きのために常に計算する)
         // ============================================
         Vector3 groundNormal = Vector3.up;
+        bool isGrounded = false;
         Vector3 rayStart = transform.position + Vector3.up * rayOffsetHeight;
-        if (Physics.Raycast(rayStart, Vector3.down, out RaycastHit hit, rayLength, groundLayer))
+        if (Physics.Raycast(rayStart, Vector3.down, out RaycastHit hit, rayLength, groundLayer,
+                QueryTriggerInteraction.Ignore))
         {
-            groundNormal = hit.normal;
+            // 下向きの面 (天井など) は地面として扱わない
+            if (Vector3.Dot(hit.normal, Vector3.up) > 0f)
+            {
+                groundNormal = hit.normal;
+            }
+
+            isGrounded = hit.distance <= rayOffsetHeight + groundCheckDistance;
         }
 
-        // 坂道に入ったら重力を無効化
-        float dot = Vector3.Dot(hit.normal, Vector3.up);
-        if (dot > 0.99f || dot <= 0)
+        // 接地中は速度を消す。
+        // 移動は MovePosition で行っているので速度は使っておらず、
+        // 残すと坂で重力により滑り落ちたり、押し戻されてガタついたりする。
+        // (以前は坂で useGravity をOFFにしていたが、坂の境目で毎フレームON/OFFが切り替わり
+        //  ガクガクする原因になっていたので、重力は常にONにしている)
+        if (isGrounded)
         {
-            rb.useGravity = true;
-        }
-        else
-        {
-            rb.useGravity = false;
+            rb.linearVelocity = Vector3.zero;
         }
 
-        Quaternion tiltRotation = Quaternion.FromToRotation(Vector3.up, groundNormal);
-        Quaternion offsetRot = Quaternion.Euler(0, 180, 0); // モデルの180度反転オフセット
+        // 傾きはなめらかに追従させる (坂の境目で判定がばたついても車体が跳ねないように)
+        Quaternion targetTilt = Quaternion.FromToRotation(Vector3.up, groundNormal);
+        currentTiltRotation = Quaternion.RotateTowards(
+            currentTiltRotation,
+            targetTilt,
+            tiltSmoothSpeed * Time.fixedDeltaTime
+        );
 
         // ============================================
         // 移動と車体の回転 (Lスティック入力時のみ実行)
@@ -308,24 +358,22 @@ public class TankMovement : MonoBehaviour
 
             Vector3 baseMoveDir = camForward * moveInput.y + camRight * moveInput.x;
 
-            // 車体の回転
+            // 車体の回転 (水平方向の向きだけで判定する)
+            // 以前は坂の傾きも含めた角度で判定していたため、坂の境目で
+            // 目標角度が跳ねるたびに 1度以内 を満たせず前進できなくなっていた
             if (baseMoveDir != Vector3.zero && tankBody != null)
             {
-                Quaternion bodyYaw = Quaternion.LookRotation(baseMoveDir, Vector3.up);
-                Quaternion bodyTargetRot = tiltRotation * bodyYaw * offsetRot;
+                Quaternion targetYaw = Quaternion.LookRotation(baseMoveDir, Vector3.up);
 
-                tankBody.rotation = Quaternion.RotateTowards(
-                    tankBody.rotation,
-                    bodyTargetRot,
+                currentBodyYaw = Quaternion.RotateTowards(
+                    currentBodyYaw,
+                    targetYaw,
                     rotationSpeed * Time.fixedDeltaTime
                 );
 
-                float angle = Quaternion.Angle(
-                    tankBody.rotation,
-                    bodyTargetRot
-                );
+                float angle = Quaternion.Angle(currentBodyYaw, targetYaw);
 
-                if (angle < 1.0f)
+                if (angle < moveAngleThreshold)
                 {
                     Vector3 moveDir = Vector3.ProjectOnPlane(
                         baseMoveDir,
@@ -340,13 +388,25 @@ public class TankMovement : MonoBehaviour
             }
         }
 
+        // 車体の姿勢 = 坂の傾き × 水平方向の向き (停止中も坂に合わせて傾ける)
+        if (tankBody != null)
+        {
+            tankBody.rotation = currentTiltRotation * currentBodyYaw * offsetRot;
+        }
+    }
+
+    void LateUpdate()
+    {
+        // 砲台とカメラは入力(Update)と同じく毎フレーム更新する。
+        // FixedUpdate で動かすとフレームレートと物理更新のズレでカクつくため。
+
         // ============================================
         // 砲台・砲身の回転 (停止中も含め、毎フレーム常に実行)
         // ============================================
 
         // ★砲台（Turret）の回転
         Quaternion logicalYawRot = Quaternion.LookRotation(currentTurretForward, Vector3.up);
-        Quaternion turretBaseRot = tiltRotation * logicalYawRot;
+        Quaternion turretBaseRot = currentTiltRotation * logicalYawRot;
 
         if (tankTurret != null)
         {
@@ -383,11 +443,9 @@ public class TankMovement : MonoBehaviour
             mainCamera.rotation = camTargetRot;
             mainCamera.position = tankTurret.position + camTargetRot * cameraOffset;
         }
-    }
 
-    void LateUpdate()
-    {
-
+        // 砲台の向きが決まった後に着弾予測を計算する
+        UpdateLandingPoint();
     }
 
     void OnFirePerformd(InputAction.CallbackContext context)
@@ -579,6 +637,8 @@ public class TankMovement : MonoBehaviour
 
         bulletStraightDistance = manager.GetFloat(
             "bulletStraightDistance", bulletStraightDistance);
+
+        fireCooldown = manager.GetFloat("fireCooldown", fireCooldown);
 
         cameraOffset = new Vector3(
             0f,
