@@ -7,12 +7,12 @@ public class SSoundManager : MonoBehaviour
     public static SSoundManager Instance { get; private set; }
 
     // 2. BGM用音量
-    [Range(0f, 1f)]
-    public float bgmVolume = 1.0f;
+    [Range(0f, 2f)]
+    public float bgmVolume = 0.5f;
 
     // 3. SE用音量
-    [Range(0f, 1f)]
-    public float seVolume = 1.0f;
+    [Range(0f, 2f)]
+    public float seVolume = 1.5f;
 
     [Header("BGM Clips")]
     [SerializeField] private AudioClip bgmInGame;

@@ -18,7 +18,9 @@ public class TankParameterManager : MonoBehaviour
     {
         if (Instance != null && Instance != this)
         {
-            Destroy(gameObject);
+            // 戦車プレハブとシーンの両方に付いていることがあるため、
+            // GameObjectごと消すと戦車本体が消えてしまう。重複したコンポーネントだけを消す。
+            Destroy(this);
             return;
         }
 
