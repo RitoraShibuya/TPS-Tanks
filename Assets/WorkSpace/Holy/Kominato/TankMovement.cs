@@ -26,6 +26,10 @@ public class TankMovement : MonoBehaviour
     [Tooltip("スティックを離した時に仰角を0度へ戻す速度 (度/秒)")]
     public float autoResetSpeed = 90f;
 
+    [Tooltip("Rスティックを水平からこの角度(度)以内に倒している時は上下入力を無視する (左右回転中に砲身が上がるのを防ぐ)")]
+    [Range(0f, 80f)]
+    public float pitchSnapAngle = 30f;
+
     [Header("カメラのオフセット位置")]
     public Vector3 cameraOffset = new Vector3(0f, 3f, -8f);
 
@@ -253,9 +257,18 @@ public class TankMovement : MonoBehaviour
             // 各角度止まる
             float radiusChange = 0.5f;
 
-            if (Mathf.Abs(rightInput.y) <= deadZone)
+            // スティックの傾き方向 (水平から何度か)。
+            // 左右に倒した時は親指の弧で少し上下にも入ってしまうので、
+            // 水平に近い入力では上下を無視して砲身が勝手に上がらないようにする
+            float stickAngle = Mathf.Atan2(
+                Mathf.Abs(rightInput.y),
+                Mathf.Abs(rightInput.x)
+            ) * Mathf.Rad2Deg;
+
+            if (Mathf.Abs(rightInput.y) <= deadZone || stickAngle < pitchSnapAngle)
             {
-                currentPitch = 0.0f;
+                // 上下の入力なし → なめらかに水平へ戻す
+                currentPitch = Mathf.MoveTowards(currentPitch, 0f, autoResetSpeed * Time.deltaTime);
             }
             else
             {
