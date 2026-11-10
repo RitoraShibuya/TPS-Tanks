@@ -1,3 +1,4 @@
+
 using Tanks.Complete;
 using UnityEngine;
 
@@ -17,10 +18,7 @@ public abstract class EnemyBase : MonoBehaviour
     [SerializeField] protected Transform target;
     [SerializeField] protected string playerTag = "Player";
 
-
-    //[SerializeField] private HHelth health;
-
-    // 残りHP（あと何発耐えられるか）
+    // 残りHP
     private int currentHp;
 
     public int CurrentHp => currentHp;
@@ -30,50 +28,53 @@ public abstract class EnemyBase : MonoBehaviour
     {
         currentHp = statsData.maxHitCount;
 
-        // Playerタグのオブジェクトを自動検出しターゲットに設定
+        // Playerタグのオブジェクトを自動検出
         if (target == null)
         {
-            GameObject playerObj = GameObject.FindGameObjectWithTag(playerTag);
+            GameObject playerObj =
+                GameObject.FindGameObjectWithTag(playerTag);
+
             if (playerObj != null)
             {
                 target = playerObj.transform;
             }
         }
 
-        //if(TankHealth == null)
-        //{
-        //    TankHealth = GetComponent<HHelth>();
-        //}
-
         EnsureCollider();
     }
 
     /// <summary>
-    /// コライダーが無いと弾が当たらないため、見た目の大きさに合わせたBoxColliderを自動で追加する
-    /// （FBXをそのまま配置した敵用の保険。正式にはInspectorでコライダーを付けること）
+    /// コライダーがない場合、自動追加
     /// </summary>
     private void EnsureCollider()
     {
         if (GetComponentInChildren<Collider>() != null) return;
 
         Renderer[] renderers = GetComponentsInChildren<Renderer>();
+
         if (renderers.Length == 0) return;
 
-        // 各Rendererのローカル境界の8頂点を、この敵のローカル空間にまとめる
         Bounds localBounds = new Bounds();
         bool initialized = false;
 
         foreach (Renderer r in renderers)
         {
             Bounds b = r.localBounds;
+
             for (int i = 0; i < 8; i++)
             {
-                Vector3 corner = b.center + Vector3.Scale(b.extents, new Vector3(
-                    (i & 1) == 0 ? -1f : 1f,
-                    (i & 2) == 0 ? -1f : 1f,
-                    (i & 4) == 0 ? -1f : 1f));
+                Vector3 corner = b.center + Vector3.Scale(
+                    b.extents,
+                    new Vector3(
+                        (i & 1) == 0 ? -1f : 1f,
+                        (i & 2) == 0 ? -1f : 1f,
+                        (i & 4) == 0 ? -1f : 1f
+                    )
+                );
 
-                Vector3 point = transform.InverseTransformPoint(r.transform.TransformPoint(corner));
+                Vector3 point = transform.InverseTransformPoint(
+                    r.transform.TransformPoint(corner)
+                );
 
                 if (!initialized)
                 {
@@ -91,12 +92,13 @@ public abstract class EnemyBase : MonoBehaviour
         box.center = localBounds.center;
         box.size = localBounds.size;
 
-        Debug.LogWarning($"[{gameObject.name}] コライダーが無いため BoxCollider を自動追加しました。");
+        Debug.LogWarning(
+            $"[{gameObject.name}] BoxColliderを自動追加しました。"
+        );
     }
 
     /// <summary>
-    /// 弾の狙い位置（ターゲットのコライダー全体の中心）を返す
-    /// ※target.position は足元にあることが多いため、そのまま狙うと足元に飛んでしまう
+    /// 弾の狙い位置を取得
     /// </summary>
     protected Vector3 GetTargetAimPoint()
     {
@@ -120,7 +122,7 @@ public abstract class EnemyBase : MonoBehaviour
             }
         }
 
-        // コライダーが無ければ見た目（Renderer）の中心を使う
+        // コライダーがない場合はRendererの中心を使用
         if (!initialized)
         {
             foreach (Renderer r in target.GetComponentsInChildren<Renderer>())
@@ -140,34 +142,41 @@ public abstract class EnemyBase : MonoBehaviour
         return initialized ? bounds.center : target.position;
     }
 
-    //private void OnEnable()
-    //{
-    //    if(TankHealth != null)
-    //    {
-    //        TankHealth.OnDie += Die();
-    //    }
-    //}
+    /// <summary>
+    /// Playerの弾（HBullet）との衝突判定
+    /// </summary>
+    private void OnCollisionEnter(Collision collision)
+    {
+        // Playerの弾か確認
+        Bullet bullet = collision.gameObject.GetComponent<Bullet>();
 
-    //private void OnDisable()
-    //{
-    //    if (TankHealth != null)
-    //    {
-    //        TankHealth.OnDie -= Die;
-    //    }
-    //}
+        // HBullet以外ならダメージを受けない
+        if (bullet == null) return;
 
+        TakeDamage();
+    }
 
     /// <summary>
     /// 被弾処理（1発につきHPを1減らす）
     /// </summary>
     public virtual void TakeDamage()
     {
-        // 破壊済み（Destroy待ち）なら何もしない
+        // 破壊済みなら何もしない
         if (currentHp <= 0) return;
 
         currentHp--;
-        Debug.Log($"[{gameObject.name}] 被弾 / 残りHP: {currentHp}");
 
+        Debug.Log(
+            $"[{gameObject.name}] 被弾 / 残りHP: {currentHp}"
+        );
+
+        // 被弾音
+        if (SSoundManager.Instance != null)
+        {
+            SSoundManager.Instance.PlaySE_Impact();
+        }
+
+        // HPが0になったら破壊
         if (currentHp <= 0)
         {
             Die();
@@ -180,6 +189,13 @@ public abstract class EnemyBase : MonoBehaviour
     protected virtual void Die()
     {
         Debug.Log($"[{gameObject.name}] 破壊されました。");
+
+        // 破壊音
+        if (SSoundManager.Instance != null)
+        {
+            SSoundManager.Instance.PlaySE_TankDestroy();
+        }
+
         Destroy(gameObject);
     }
 }
