@@ -1,3 +1,4 @@
+
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -21,7 +22,9 @@ public class STitleGameManager : SGameManagerBase
         SUIManager.SInstance.SPlayFadeIn(0.4f);
         STitleUIInstance = SUIManager.SInstance.SShowUI(STitleUIPrefab);
 
-        TCallingSelect selectUI = STitleUIInstance.GetComponent<TCallingSelect>();
+        SCallingSelect selectUI =
+            STitleUIInstance.GetComponent<SCallingSelect>();
+
         if (selectUI != null)
         {
             selectUI.OnCallStageSelect -= OnMainButtonClick;
@@ -35,7 +38,8 @@ public class STitleGameManager : SGameManagerBase
     {
         if (SProgressManager.SInstance != null)
         {
-            m_stageStatusList = SProgressManager.SInstance.GetStageStatusList(3);
+            m_stageStatusList =
+                SProgressManager.SInstance.GetStageStatusList(3);
         }
     }
 
@@ -51,18 +55,22 @@ public class STitleGameManager : SGameManagerBase
         }
         else
         {
-            SUIManager.SInstance.SHideUI(STitleUIInstance);
+            // SUIManager.SInstance.SHideUI(STitleUIInstance);
 
             // 重複生成を排除し1回のみ生成
-            GameObject uiInstance = SUIManager.SInstance.SShowUI(SStageSelectUIPrefab);
+            GameObject uiInstance =
+                SUIManager.SInstance.SShowUI(SStageSelectUIPrefab);
 
-            StageSelectButtons selectUI = uiInstance.GetComponent<StageSelectButtons>();
+            SStageSelectButtons selectUI =
+                uiInstance.GetComponent<SStageSelectButtons>();
+
             if (selectUI != null)
             {
                 selectUI.OnStageSelectedEvent -= LoadStage;
                 selectUI.OnStageSelectedEvent += LoadStage;
 
-                // 今後 StageSelectButtons 側でボタン初期化処理を実装した際にコメント解除する
+                // 今後 SStageSelectButtons 側でボタン初期化処理を
+                // 実装した際にコメント解除する
                 // selectUI.SetupButtons(m_stageStatusList);
             }
         }
@@ -76,7 +84,8 @@ public class STitleGameManager : SGameManagerBase
         // 未解放ステージは弾く
         if (!SProgressManager.SInstance.IsStageUnlocked(stageID))
         {
-            Debug.LogWarning($"Stage {stageID} はまだ解放されていません。");
+            Debug.LogWarning(
+                $"Stage {stageID} はまだ解放されていません。");
             return;
         }
 
@@ -96,11 +105,16 @@ public class STitleGameManager : SGameManagerBase
 
         for (int i = 1; i <= 3; i++)
         {
-            bool isUnlocked = SProgressManager.SInstance.IsStageUnlocked(i);
-            bool isCleared = SProgressManager.SInstance.IsStageCleared(i);
+            bool isUnlocked =
+                SProgressManager.SInstance.IsStageUnlocked(i);
 
-            string status = isCleared ? "[Cleared]" : (isUnlocked ? "[Unlocked]" : "[Locked]");
-            //string label = (i == 0) ? $"0: Tutorial {status}" : $"Stage {i} {status}";
+            bool isCleared =
+                SProgressManager.SInstance.IsStageCleared(i);
+
+            string status = isCleared
+                ? "[Cleared]"
+                : (isUnlocked ? "[Unlocked]" : "[Locked]");
+
             string label = $"Stage {i} {status}";
 
             GUI.enabled = isUnlocked && !m_isLoading;
