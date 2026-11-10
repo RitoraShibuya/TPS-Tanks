@@ -45,4 +45,4 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::STitleGameManager
   STitleUIPrefab: {fileID: 7968317151426386470, guid: b30e3d0e6f80d744b831fe25f344f3d5, type: 3}
-  SStageSelectUIPrefab: {fileID: 4831838304193317221, guid: 804fab7c266d0e44cb959d7871ca0270, type: 3}
+  SStageSelectUIPrefab: {fileID: 1541052231527767266, guid: cbc51d2f2ab044a4da2026dee892ab7c, type: 3}
